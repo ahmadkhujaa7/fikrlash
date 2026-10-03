@@ -102,11 +102,11 @@
         @if ($post->isPublished())
             <footer class="-ml-2 mt-2 flex items-center justify-between text-muted sm:max-w-md">
                 @auth
-                    <button type="button" class="group flex items-center gap-1.5 rounded-full px-2 py-1.5 text-sm hover:text-anor"
+                    <button type="button" @class(['group flex items-center gap-1.5 rounded-full px-2 py-1.5 text-sm hover:text-anor', 'text-anor' => $post->is_liked])
                             x-data="toggle({ active: {{ $post->is_liked ? 'true' : 'false' }}, count: {{ (int) $post->likes_count }}, url: '{{ route('api.v1.posts.like', $post) }}', onKey: 'liked', countKey: 'likes_count' })"
-                            @click="flip" :class="active && 'text-anor'" :aria-pressed="active" aria-label="Yoqtirish">
+                            @click="flip" :class="{ 'text-anor': active }" aria-pressed="{{ $post->is_liked ? 'true' : 'false' }}" :aria-pressed="active" aria-label="Yoqtirish">
                         <span class="rounded-full p-1 group-hover:bg-anor-soft">
-                            <svg class="size-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg>
+                            <svg class="size-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" fill="{{ $post->is_liked ? 'currentColor' : 'none' }}" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg>
                         </span>
                         <span x-text="count || ''">{{ $post->likes_count ?: '' }}</span>
                     </button>
@@ -127,11 +127,11 @@
 
                 <div class="flex items-center">
                     @auth
-                        <button type="button" class="group rounded-full p-2 hover:text-firuza"
+                        <button type="button" @class(['group rounded-full p-2 hover:text-firuza', 'text-firuza' => $post->is_saved])
                                 x-data="toggle({ active: {{ $post->is_saved ? 'true' : 'false' }}, count: 0, url: '{{ route('api.v1.posts.save', $post) }}', onKey: 'saved' })"
                                 @click="flip().then(() => toast(active ? 'Saqlanganlarga qo‘shildi.' : 'Saqlanganlardan olib tashlandi.'))"
-                                :class="active && 'text-firuza'" :aria-pressed="active" aria-label="Saqlash">
-                            <svg class="size-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"/></svg>
+                                :class="{ 'text-firuza': active }" aria-pressed="{{ $post->is_saved ? 'true' : 'false' }}" :aria-pressed="active" aria-label="Saqlash">
+                            <svg class="size-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" fill="{{ $post->is_saved ? 'currentColor' : 'none' }}" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"/></svg>
                         </button>
                     @endauth
                     <button type="button" class="rounded-full p-2 hover:text-lapis" @click="sharePost('{{ $url }}', '')" aria-label="Ulashish">

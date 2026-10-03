@@ -14,10 +14,11 @@
                     <span class="block text-sm text-muted">{{ $category->description }}</span>
                 </a>
                 @auth
-                    <button type="button" class="btn btn-sm"
-                            x-data="categoryFollow({ following: {{ in_array($category->id, $followed, true) ? 'true' : 'false' }}, url: '{{ route('api.v1.categories.follow', $category) }}' })"
-                            @click="flip" :class="following ? 'btn-secondary' : 'btn-primary'"
-                            x-text="following ? 'Qiziqaman ✓' : 'Qiziqaman'"></button>
+                    @php $isOn = in_array($category->id, $followed, true); @endphp
+                    <button type="button" class="btn btn-sm {{ $isOn ? 'btn-secondary' : 'btn-primary' }}"
+                            x-data="categoryFollow({ following: {{ $isOn ? 'true' : 'false' }}, url: '{{ route('api.v1.categories.follow', $category) }}' })"
+                            @click="flip" :class="{ 'btn-secondary': following, 'btn-primary': !following }"
+                            x-text="following ? 'Qiziqaman ✓' : 'Qiziqaman'">{{ $isOn ? 'Qiziqaman ✓' : 'Qiziqaman' }}</button>
                 @endauth
             </li>
         @endforeach
