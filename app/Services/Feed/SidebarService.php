@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Services\Feed;
+
+use App\Models\Follow;
+use App\Models\Tag;
+use App\Models\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+/** Yon panel: trend teglar va tavsiya etilgan foydalanuvchilar (keshlangan). */
+class SidebarService
+{
+    public function trendingTags(int $limit = 8): Collection
+    {
+        return Cache::remember('sidebar:trending-tags', now()->addMinutes(10), fn () => Tag::query()
+            ->select('tags.*', DB::raw('COUNT(post_tag.post_id) as recent_posts'))
+            ->join('post_tag', 'post_tag.tag_id', '=', 'tags.id')
+            ->join('posts', 'posts.id', '=', 'post_tag.post_id')
+            ->where('posts.status', 'published')
+            ->whereNull('posts.deleted_at')
+            ->where('posts.published_at', '>=', now()->subDays(7))
+            ->groupBy('tags.id', 'tags.name', 'tags.slug', 'tags.created_at', 'tags.updated_at')
+            ->orderByDesc('recent_posts')
+            ->limit($limit)
+            ->get());
+    }
+
+    public function suggestedUsers(?User $viewer, int $limit = 4): Collection
+    {
+        $key = 'sidebar:suggested:'.($viewer?->id ?? 'guest');
+
+        return Cache::remember($key, now()->addMinutes(15), function () use ($viewer, $limit) {
+            return User::query()->visible()
+                ->when($viewer, fn ($q) => $q->whereKeyNot($viewer->id)
+                    ->whereNotIn('id', Follow::query()->select('following_id')->where('follower_id', $viewer->id)))
+                ->where('last_active_at', '>=', now()->subDays(30))
+                ->orderByDesc('followers_count')
+                ->limit($limit)
+                ->get();
+        });
+    }
+
+    public function forget(?User $viewer): void
+    {
+        Cache::forget('sidebar:suggested:'.($viewer?->id ?? 'guest'));
+    }
+}

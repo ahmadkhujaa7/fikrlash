@@ -1,0 +1,2 @@
+# sudo crontab -u www-data -e
+* * * * * cd /var/www/fikrlash/current && php artisan schedule:run >> /dev/null 2>&1

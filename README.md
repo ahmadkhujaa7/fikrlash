@@ -1,59 +1,345 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Fikrlash.uz
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+O‘zbek tilidagi fikr almashish platformasi: foydalanuvchilar fikr, g‘oya va savollarini yozadi, boshqalar o‘qiydi, muhokama qiladi. Postlar fon rejimida AI orqali tahlil qilinadi, "Siz uchun" lentasi qiziqishlarga moslashadi.
 
-## About Laravel
+**Stack:** PHP 8.3+ · Laravel 12 · MySQL 8 · Redis · Blade + Alpine.js + Tailwind CSS 4 · Filament 5 (admin) · Laravel Sanctum (API)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Mundarija
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. [Tez boshlash (Windows / macOS / Linux)](#1-tez-boshlash)
+2. [Arxitektura](#2-arxitektura)
+3. [Muhit (.env)](#3-muhit-env)
+4. [Database](#4-database)
+5. [Autentifikatsiya va OTP](#5-autentifikatsiya-va-otp)
+6. [API](#6-api)
+7. [AI tizimi](#7-ai-tizimi)
+8. [Queue](#8-queue)
+9. [Scheduler (cron)](#9-scheduler-cron)
+10. [Testlar](#10-testlar)
+11. [Production deploy](#11-production-deploy)
+12. [Xavfsizlik](#12-xavfsizlik)
+13. [Muammolarni hal qilish](#13-muammolarni-hal-qilish)
+14. [Yo‘l xaritasi](#14-yol-xaritasi)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 1. Tez boshlash
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Kerak:** PHP 8.3+ (`gd`, `intl`, `mbstring`, `pdo_mysql`, `exif`, `fileinfo`, `zip` kengaytmalari), Composer 2, Node.js 20+, MySQL 8 (yoki sinov uchun SQLite).
+Windows'da eng oson yo‘l — [Laragon](https://laragon.org) yoki [Laravel Herd](https://herd.laravel.com): PHP, MySQL va Composer bitta o‘rnatishda keladi.
 
-## Laravel Sponsors
+```bash
+git clone https://github.com/USERNAME/fikrlash.git
+cd fikrlash
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+composer install
+npm install
+npm run build
 
-### Premium Partners
+cp .env.example .env          # Windows: copy .env.example .env
+php artisan key:generate
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# .env da DB_DATABASE=fikrlash, DB_USERNAME, DB_PASSWORD ni sozlang va bazani yarating:
+#   mysql -u root -e "CREATE DATABASE fikrlash CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+php artisan migrate --seed
+php artisan storage:link
 
-## Contributing
+composer dev                  # server + queue + vite bir vaqtda
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Sayt: http://localhost:8000 · Admin: http://localhost:8000/admin
 
-## Code of Conduct
+**Lokal admin:** `+998900000001` / `admin12345` (yoki `.env` dagi `ADMIN_PHONE`, `ADMIN_PASSWORD`).
+Seeder lokal muhitda demo ma'lumot yaratadi: 40 foydalanuvchi (parol: `password`), 150 post, izohlar, like'lar, shikoyatlar.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**SMS kodi qayerda?** Lokal muhitda `SMS_DRIVER=log` — kod `storage/logs/laravel.log` fayliga yoziladi:
+```
+[SMS] +998901234567: Fikrlash.uz tasdiqlash kodi: 482913. Kodni hech kimga bermang.
+```
 
-## Security Vulnerabilities
+> SQLite bilan tez sinash: `.env` da `DB_CONNECTION=sqlite` qilib, boshqa `DB_*` qatorlarini o‘chiring. Qidiruv LIKE orqali ishlaydi (MySQL'da FULLTEXT).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## 2. Arxitektura
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Monolit Laravel ilova. Controllerlar yupqa: so‘rov → validatsiya (Form Request) → avtorizatsiya (Policy) → servis → javob (Blade yoki API Resource).
+
+```
+app/
+├── Console/Commands/     scheduler buyruqlari (views:flush, posts:refresh-scores, ...)
+├── Contracts/            SmsProvider, AiProvider interfeyslari
+├── Enums/                UserStatus, PostStatus, ReportReason ... (o‘zbekcha label bilan)
+├── Events/ Listeners/    PostCreated → AI + mention, PostLiked → bildirishnoma, ...
+├── Filament/             admin panel: resurslar, dashboard, AI analitika, sozlamalar
+├── Http/
+│   ├── Controllers/      web (Blade) va Api/V1 (JSON)
+│   ├── Middleware/       SecurityHeaders (CSP), EnsureUserIsActive
+│   ├── Requests/         Form Request validatsiya (web va API uchun umumiy)
+│   └── Resources/        API javob formatlari (model to‘g‘ridan-to‘g‘ri JSON qilinmaydi)
+├── Jobs/                 AnalyzePostJob, SendOtpJob
+├── Models/
+├── Policies/             PostPolicy, CommentPolicy, UserPolicy
+├── Services/
+│   ├── Auth/             OtpService, RegistrationService, PasswordResetService
+│   ├── Ai/               AiManager, ClaudeProvider, OpenAiProvider, FakeProvider
+│   ├── Feed/             FeedService, RecommendationService, SearchService, ViewRecorder
+│   ├── Moderation/       ModerationService (har bir qaror audit log'ga yoziladi)
+│   ├── Posts/ Social/ Account/ Media/ Sms/
+└── Support/              ContentFormatter (XSS-xavfsiz), PhoneNumber, TextNormalizer, ApiResponse
+config/fikrlash.php       barcha biznes-limitlar (post uzunligi, OTP, feed vaznlari...)
+config/ai.php, sms.php    provayder sozlamalari
+```
+
+**Asosiy qarorlar:**
+
+| Qaror | Sabab |
+|---|---|
+| Ro‘yxatdan o‘tishda akkaunt OTP tasdiqlangandan **keyin** yaratiladi | Begona telefon raqamini "band qilib qo‘yish" mumkin emas |
+| API tokenlar — Sanctum, `users_tokens` jadvalida | Token SHA-256 hash ko‘rinishida saqlanadi; muddat, oxirgi foydalanish, bekor qilish tayyor |
+| Like/save/follow — `unique` indeks + `insertOrIgnore` + atomik `increment` | Race condition'da hisoblagich buzilmaydi; tungi `fikrlash:reconcile-counters` qo‘shimcha kafolat |
+| Ko‘rishlar — 30 daqiqalik dedup, muallif hisoblanmaydi, ixtiyoriy Redis buffer | Haqiqiy statistika, har refreshda DB'ga yozilmaydi |
+| "Siz uchun" — qoidalarga asoslangan reyting, natija keshlanadi | ML'siz ham yaxshi ishlaydi; `RecommendationService::rank()` keyinchalik ML bilan almashtiriladi |
+| Qidiruv — `search_text` ustuni (apostroflar olib tashlangan) + FULLTEXT | "o‘qish", "oʻqish", "o'qish" bir-birini topadi |
+| Rasmlar GD orqali WebP'ga qayta encode qilinadi | EXIF/GPS o‘chadi, zararli fayllar zararsizlanadi |
+| AI faqat signal beradi | Xavfli post moderator tekshiruviga tushadi, foydalanuvchi avtomatik jazolanmaydi |
+
+---
+
+## 3. Muhit (.env)
+
+| O‘zgaruvchi | Lokal | Production |
+|---|---|---|
+| `APP_ENV` / `APP_DEBUG` | `local` / `true` | `production` / `false` |
+| `DB_CONNECTION` | `mysql` yoki `sqlite` | `mysql` |
+| `CACHE_STORE`, `QUEUE_CONNECTION`, `SESSION_DRIVER` | `database` | `redis`, `redis`, `redis` yoki `database` |
+| `SMS_DRIVER` | `log` | `eskiz` (+ `ESKIZ_EMAIL`, `ESKIZ_PASSWORD`) |
+| `AI_PROVIDER` | `fake` | `claude` (+ `ANTHROPIC_API_KEY`) yoki `openai` |
+| `MEDIA_DISK` | `public` | `public` yoki `s3` |
+| `VIEWS_BUFFER` | `direct` | `redis` |
+| `SECURITY_HSTS` | `false` | `true` (SSL sozlangandan keyin) |
+| `SESSION_SECURE_COOKIE` | `false` | `true` |
+| `TRUSTED_PROXIES` | `127.0.0.1` | load balancer IP'lari |
+
+`.env` hech qachon git'ga qo‘shilmaydi (`.gitignore`da). Barcha limitlar `config/fikrlash.php` da.
+
+**S3-compatible storage**ga o‘tish: `composer require league/flysystem-aws-s3-v3`, `.env` da `MEDIA_DISK=s3` va `AWS_*` qiymatlari. Kod o‘zgarmaydi.
+
+---
+
+## 4. Database
+
+Migratsiyalar: `database/migrations/`. Asosiy jadvallar:
+
+- `users` — telefon E.164 (`+998…`) formatida, `status` (active/suspended/blocked/deactivated), `role` (user/admin), soft delete
+- `phone_verifications` — OTP (faqat HMAC hash), urinishlar, muddati
+- `users_tokens` — API tokenlar (hash)
+- `posts` — status (published/draft/hidden/pending_moderation), visibility (public/followers), hisoblagichlar, `score`, AI maydonlari, soft delete
+- `comments` — bir darajali javoblar (`parent_id` + `reply_to_user_id`)
+- `post_likes`, `comment_likes`, `saved_posts`, `follows` — `unique` cheklovlar bilan
+- `categories`, `tags`, `post_tag`
+- `user_interests` — tavsiya tizimi uchun kategoriya vaznlari
+- `post_views` — kim nimani ko‘rgani va o‘qish vaqti (90 kun saqlanadi)
+- `post_ai_analyses` — AI tahlil tarixi, tokenlar, xatolar
+- `notifications`, `reports`, `audit_logs`, `settings`
+
+O‘zgartirishlar faqat migratsiya orqali: `php artisan make:migration ...` → `php artisan migrate`.
+
+---
+
+## 5. Autentifikatsiya va OTP
+
+- **Ro‘yxatdan o‘tish:** ism, username, telefon, parol → SMS kod → tasdiqlangach akkaunt yaratiladi.
+- **Kirish:** telefon *yoki* username + parol. Xato xabari doim bir xil (qaysi qismi noto‘g‘ri ekani aytilmaydi).
+- **Parolni tiklash:** telefon → SMS kod → yangi parol. Barcha sessiya va API tokenlar bekor qilinadi.
+- **OTP himoyasi:** 6 xonali, 5 daqiqa amal qiladi, 5 urinish (atomik hisob), 60s qayta yuborish cooldown, telefon bo‘yicha kuniga 8 ta, IP bo‘yicha 30 ta SMS, bir kod bir marta.
+- **Telefonni almashtirish:** sozlamalarda, yangi raqamga OTP orqali.
+
+### Eskiz.uz ulash
+1. eskiz.uz da akkaunt oching, "4546" (yoki o‘z) jo‘natuvchi nomini va SMS shablonini tasdiqlating. Shablon `.env` dagi `SMS_OTP_TEMPLATE` bilan **aynan** mos bo‘lishi kerak.
+2. `.env`: `SMS_DRIVER=eskiz`, `ESKIZ_EMAIL=...`, `ESKIZ_PASSWORD=...`.
+3. Boshqa provayder qo‘shish: `App\Contracts\SmsProvider` ni implement qiling va `AppServiceProvider` dagi `match` ga qo‘shing.
+
+---
+
+## 6. API
+
+- Manzil: `/api/v1/`, hujjat: **`/docs/api`** sahifasi va `/docs/openapi.json` (OpenAPI 3.1, Postman/Swagger'ga import qilinadi).
+- Autentifikatsiya: `Authorization: Bearer <token>` (`POST /api/v1/auth/login` yoki sozlamalar → API tokenlar).
+- Javob formati:
+  ```json
+  {"success": true, "message": "OK", "data": {...}, "meta": {"pagination": {"next_cursor": "...", "has_more": true}}}
+  {"success": false, "message": "...", "errors": {"content": ["Matn to‘ldirilishi shart."]}}
+  ```
+- O‘z saytimiz ham shu API'dan foydalanadi (like, save, follow, shikoyat) — sessiya cookie + CSRF orqali (Sanctum SPA).
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8000/api/v1/auth/login -H "Accept: application/json" \
+  -d login=admin -d password=admin12345 -d device_name=cli | php -r 'echo json_decode(stream_get_contents(STDIN))->data->token;')
+curl -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" localhost:8000/api/v1/feed?tab=latest
+```
+
+---
+
+## 7. AI tizimi
+
+```
+Post yaratildi → PostCreated event → AnalyzePostJob (queue: ai) → AiProvider → validatsiya → post_ai_analyses
+                                                                              ↓
+                                                    post.ai_* maydonlari, avto-kategoriya, moderatsiya signali
+```
+
+- **Provayderlar:** `claude` (tool-use orqali qat'iy JSON), `openai` (json_object), `fake` (kalitsiz, kalit so‘z qoidalari), `null`. Yangi provayder: `App\Contracts\AiProvider` + `AiManager` ga bitta qator.
+- **Tahlil:** mavzu, kategoriya, kayfiyat, sifat, toksiklik, spam, ta'limiy qiymat, engagement, qisqacha mazmun, kalit so‘zlar.
+- **Xavfsizlik:** post matni prompt'da `<post>` ichida "ishonchsiz ma'lumot" sifatida beriladi; AI javobi har doim validatsiya qilinadi (tur, 0–100 oraliq, ruxsat etilgan kategoriyalar). AI'ga faqat post matni yuboriladi — telefon, ism yuborilmaydi.
+- **Xarajat nazorati:** bir postga bir vaqtda bitta job; bir xil matn qayta tahlil qilinmaydi (content hash, boshqa postdagi nusxa — keshdan); daqiqalik (`AI_REQUESTS_PER_MINUTE`) va kunlik (`AI_DAILY_LIMIT`) limit; 3 marta qayta urinish. Admin → **AI analitika** sahifasida tokenlar, taxminiy narx, xatolar.
+- **Moderatsiya:** toksiklik ≥ 70 yoki spam ≥ 80 bo‘lsa post `pending_moderation` holatiga o‘tadi va admin tekshiruvini kutadi (sozlamalarda o‘chirish mumkin). Muallifga bildirishnoma boradi.
+- AI ishlamasa ham post chop etiladi; tahlil qilinmaganlar `ai:retry-pending` orqali har soatda qayta navbatga qo‘yiladi.
+
+---
+
+## 8. Queue
+
+| Navbat | Ishlar |
+|---|---|
+| `high` | OTP SMS (`SendOtpJob`, payload shifrlangan) |
+| `default` | bildirishnomalar, mention'lar (queued listenerlar) |
+| `ai` | `AnalyzePostJob` |
+
+```bash
+php artisan queue:work --queue=high,default      # asosiy
+php artisan queue:work --queue=ai --timeout=120  # AI (alohida)
+php artisan queue:failed                         # muvaffaqiyatsiz joblar
+php artisan queue:retry all
+```
+
+Production'da Supervisor: `deploy/supervisor.conf`.
+
+---
+
+## 9. Scheduler (cron)
+
+Serverda bitta cron yozuvi (`deploy/crontab`):
+```
+* * * * * cd /var/www/fikrlash/current && php artisan schedule:run >> /dev/null 2>&1
+```
+
+| Buyruq | Qachon | Vazifa |
+|---|---|---|
+| `views:flush` | har daqiqa | Redis'dagi ko‘rishlarni DB'ga yozish |
+| `posts:refresh-scores` | 10 daqiqa | Trending/tavsiya ballari |
+| `users:lift-suspensions` | 10 daqiqa | Muddati tugagan cheklovlar |
+| `ai:retry-pending` | har soat | Tahlil qilinmagan postlar |
+| `fikrlash:reconcile-counters` | 03:10 | Hisoblagichlarni qayta hisoblash |
+| `fikrlash:prune` | 03:30 | Eski OTP, ko‘rishlar, o‘qilgan bildirishnomalar, muddati o‘tgan tokenlar |
+| `accounts:purge-deleted` | 04:00 | 30 kundan oshgan o‘chirilgan akkauntlar |
+| `interests:decay` | haftalik | Eski qiziqishlar so‘nadi |
+
+Qo‘lda: `php artisan schedule:list`. Admin yaratish: `php artisan fikrlash:create-admin +998901234567`.
+
+---
+
+## 10. Testlar
+
+```bash
+php artisan test          # 112 test: auth, OTP, postlar, izohlar, like/follow, feed, qidiruv,
+                          # bildirishnomalar, shikoyatlar, admin, API, AI, ko‘rishlar, akkaunt, xavfsizlik
+vendor/bin/pint           # kod uslubi (PSR-12 / Laravel)
+```
+
+Testlar SQLite xotirada ishlaydi (SMS — `array`, AI — `fake` drayver). GitHub Actions (`.github/workflows/ci.yml`) har push'da testlarni **SQLite va MySQL 8** da ishga tushiradi.
+
+---
+
+## 11. Production deploy
+
+**Server:** Ubuntu 24.04, Nginx, PHP 8.3-FPM, MySQL 8, Redis, Supervisor, Certbot.
+
+> ⚖️ O‘zbekistonning "Shaxsga doir ma'lumotlar to‘g‘risida"gi qonuni fuqarolarning shaxsiy ma'lumotlarini O‘zbekiston hududidagi serverlarda saqlashni talab qiladi. Server va storage joylashuvini yurist bilan tasdiqlang.
+
+```bash
+# 1. Paketlar
+sudo apt install nginx mysql-server redis-server supervisor certbot python3-certbot-nginx \
+  php8.3-fpm php8.3-{mysql,redis,gd,intl,mbstring,xml,curl,zip,bcmath,exif}
+# Composer va Node.js 22 ni rasmiy saytlaridan o‘rnating.
+
+# 2. Baza
+sudo mysql -e "CREATE DATABASE fikrlash CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  CREATE USER 'fikrlash'@'localhost' IDENTIFIED BY 'KUCHLI_PAROL';
+  GRANT ALL ON fikrlash.* TO 'fikrlash'@'localhost';"
+
+# 3. Papkalar
+sudo mkdir -p /var/www/fikrlash/{releases,shared/storage}
+sudo chown -R www-data:www-data /var/www/fikrlash
+# shared/.env ni yarating (.env.example asosida, APP_ENV=production, APP_DEBUG=false ...)
+# shared/storage ichida: app/public, framework/{cache,sessions,views}, logs
+
+# 4. Deploy (har safar)
+REPO=git@github.com:USERNAME/fikrlash.git ./deploy/deploy.sh
+
+# 5. Birinchi marta
+php artisan fikrlash:create-admin +998XXXXXXXXX
+php artisan db:seed --class=CategorySeeder --force
+
+# 6. Nginx + SSL
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/fikrlash.uz
+sudo ln -s /etc/nginx/sites-available/fikrlash.uz /etc/nginx/sites-enabled/
+sudo certbot --nginx -d fikrlash.uz -d www.fikrlash.uz
+sudo nginx -t && sudo systemctl reload nginx
+
+# 7. Queue va cron
+sudo cp deploy/supervisor.conf /etc/supervisor/conf.d/fikrlash.conf
+sudo supervisorctl reread && sudo supervisorctl update
+sudo crontab -u www-data deploy/crontab
+```
+
+**Production .env tekshiruv ro‘yxati:** `APP_DEBUG=false`, `APP_URL=https://fikrlash.uz`, `SESSION_SECURE_COOKIE=true`, `SECURITY_HSTS=true`, `SMS_DRIVER=eskiz`, `AI_PROVIDER=claude`, `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis`, `VIEWS_BUFFER=redis`, `SANCTUM_STATEFUL_DOMAINS=fikrlash.uz`, `LOG_LEVEL=warning`.
+
+**Monitoring:** `storage/logs/laravel-*.log` (xatolar), `security-*.log` (login, OTP, bloklash), `ai-*.log` (AI xatolari), `queue:failed`. Kelajakda: Laravel Horizon (Redis queue dashboard), Sentry/Flare (xatolar).
+
+**Backup:** har kuni `mysqldump --single-transaction fikrlash | gzip` + `shared/storage/app/public` ni boshqa joyga nusxalash.
+
+---
+
+## 12. Xavfsizlik
+
+- **Parollar** bcrypt bilan hash; **OTP** — HMAC-SHA256 (app key bilan); **API tokenlar** — SHA-256.
+- **XSS:** foydalanuvchi matni DB'da xom saqlanadi, chiqishda har bo‘lak escape qilinadi (`ContentFormatter`); faqat `http(s)` havolalar, `rel="nofollow ugc noopener"`.
+- **CSP** (nonce asosida), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS (`SecurityHeaders` middleware).
+- **CSRF** barcha formalarda; **SQL injection** — Eloquent/binding, `LIKE` belgilari escape qilinadi.
+- **Rate limiting:** login, register, OTP yuborish/tekshirish, parol tiklash, post, izoh, like, follow, qidiruv, shikoyat, yuklash, API, AI (`AppServiceProvider::configureRateLimiting`).
+- **Fayllar:** MIME + kengaytma + o‘lcham + piksel soni tekshiruvi, GD orqali qayta encode, UUID nom.
+- **Avtorizatsiya:** Policy'lar (post, izoh, follow), admin panel faqat `role=admin` va faol foydalanuvchilar uchun.
+- **Audit:** barcha admin/moderatsiya amallari `audit_logs` da (kim, nima, oldingi/yangi qiymat, IP).
+- **Privacy:** jins/tug‘ilgan sana ixtiyoriy va ochiq ko‘rsatilmaydi; telefon faqat egasiga (maskalangan); ma'lumot eksporti va akkaunt o‘chirish mavjud.
+- Production'da stack trace, SQL va yo‘llar foydalanuvchiga ko‘rsatilmaydi (`APP_DEBUG=false`, API uchun umumiy xato javobi).
+
+**Tavsiya (keyingi qadam):** adminlar uchun 2FA, `@alpinejs/csp` build (CSP'dan `unsafe-eval` ni olib tashlash), WAF/Cloudflare.
+
+---
+
+## 13. Muammolarni hal qilish
+
+| Belgi | Yechim |
+|---|---|
+| `Vite manifest not found` | `npm install && npm run build` (yoki dev uchun `npm run dev`) |
+| Rasmlar ko‘rinmaydi | `php artisan storage:link`, `APP_URL` to‘g‘ri ekanini tekshiring |
+| SMS kelmayapti (lokal) | Kod `storage/logs/laravel.log` da; queue ishlayotganini tekshiring (`composer dev`) |
+| AI tahlil bo‘lmayapti | `php artisan queue:work --queue=ai`, `storage/logs/ai-*.log`, admin → AI analitika |
+| Like/follow bosganda 419 | Sahifani yangilang; `SANCTUM_STATEFUL_DOMAINS` da domen (va port) borligini tekshiring |
+| `Too Many Requests` | Rate limit; `php artisan cache:clear` (lokal) |
+| Admin panel 403 | Foydalanuvchi `role=admin` emas: `php artisan fikrlash:create-admin +998...` |
+| Kesh o‘zgarishlardan keyin eskicha | `php artisan optimize:clear` |
+| Windows'da `ext-gd` yo‘q | `php.ini` da `extension=gd` ni yoqing |
+
+---
+
+## 14. Yo‘l xaritasi
+
+**MVP (tayyor):** autentifikatsiya + SMS OTP, profil, postlar (rasm, kategoriya, teg, qoralama, ko‘rinish), izoh va javoblar, like, saqlash, obuna, lenta (Siz uchun / Eng yangi / Obunalar), qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, rule-based tavsiyalar, o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
+
+**V2:** real-time bildirishnomalar (Laravel Reverb), Horizon, Meilisearch (Laravel Scout), kirill ↔ lotin qidiruv, haftalik dayjest, foydalanuvchini bloklash/mute, admin 2FA, rasmlar uchun CDN va bir nechta o‘lcham.
+
+**V3:** ML tavsiya modeli (`RecommendationService::rank()` o‘rniga), AI yordamchi, ovozli/video postlar, hamjamiyatlar, shaxsiy xabarlar, badge va gamification, muallif analitikasi, premium.

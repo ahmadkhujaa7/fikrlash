@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: fikrlash_test
+          MYSQL_ROOT_PASSWORD: secret
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+
+    strategy:
+      matrix:
+        db: [sqlite, mysql]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, gd, exif, pdo_mysql, pdo_sqlite, redis
+          coverage: none
+
+      - name: Composer
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Code style (Pint)
+        run: vendor/bin/pint --test
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Frontend build
+        run: |
+          npm install
+          npm run build
+
+      - name: Prepare
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Tests (${{ matrix.db }})
+        env:
+          DB_CONNECTION: ${{ matrix.db }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ${{ matrix.db == 'mysql' && 'fikrlash_test' || ':memory:' }}
+          DB_USERNAME: root
+          DB_PASSWORD: secret
+        run: php artisan test
+
+      - name: Migrations + seed on MySQL
+        if: matrix.db == 'mysql'
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: fikrlash_test
+          DB_USERNAME: root
+          DB_PASSWORD: secret
+        run: |
+          php artisan migrate:fresh --seed --force
+          php artisan fikrlash:reconcile-counters
+          php artisan posts:refresh-scores

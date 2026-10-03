@@ -1,2 +1,10 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /settings
+Disallow: /api/
+Disallow: /feed
+Disallow: /search
+Disallow: /saved
+Disallow: /notifications
+Disallow: /drafts
+Sitemap: https://fikrlash.uz/sitemap.xml

@@ -5,7 +5,217 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/*
+ * Fikrlash.uz dizayn tizimi
+ * ------------------------------------------------------------
+ * Ranglar O‘zbekiston hunarmandchiligidan: Rishton sopolining lojuvard (lapis) ko‘ki,
+ * Samarqand gumbazlarining firuza rangi va anor qizili (like).
+ * Shriftlar: Literata — o‘qish uchun (post matni), Onest — interfeys.
+ * Barcha ranglar semantik o‘zgaruvchilar orqali → dark mode avtomatik.
+ */
+
+:root {
+    --paper: #f6f7f5;
+    --surface: #ffffff;
+    --sunken: #eef1ef;
+    --ink: #17212b;
+    --ink-soft: #3b4754;
+    --muted: #66727e;
+    --line: #e2e6e4;
+    --lapis: #2447a6;
+    --lapis-hover: #1c3a8c;
+    --lapis-soft: #e8edfa;
+    --firuza: #0f9c98;
+    --firuza-soft: #dff3f1;
+    --anor: #d63a52;
+    --anor-soft: #fbe7ea;
+    --amber: #b7791f;
+    --amber-soft: #fbf1df;
+    --focus: #2447a6;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #0f1519;
+        --surface: #151d22;
+        --sunken: #1b252b;
+        --ink: #e5ecef;
+        --ink-soft: #c3ced4;
+        --muted: #8b989f;
+        --line: #24313a;
+        --lapis: #86a6ff;
+        --lapis-hover: #a5bdff;
+        --lapis-soft: #1d2a4a;
+        --firuza: #42c9c3;
+        --firuza-soft: #143534;
+        --anor: #f06a7e;
+        --anor-soft: #3a1c22;
+        --amber: #e3a84f;
+        --amber-soft: #392b17;
+        --focus: #86a6ff;
+        color-scheme: dark;
+    }
+}
+
+@theme inline {
+    --color-paper: var(--paper);
+    --color-surface: var(--surface);
+    --color-sunken: var(--sunken);
+    --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-muted: var(--muted);
+    --color-line: var(--line);
+    --color-lapis: var(--lapis);
+    --color-lapis-hover: var(--lapis-hover);
+    --color-lapis-soft: var(--lapis-soft);
+    --color-firuza: var(--firuza);
+    --color-firuza-soft: var(--firuza-soft);
+    --color-anor: var(--anor);
+    --color-anor-soft: var(--anor-soft);
+    --color-amber: var(--amber);
+    --color-amber-soft: var(--amber-soft);
+
+    --font-sans: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-serif: 'Literata', ui-serif, Georgia, 'Times New Roman', serif;
+
+    /* Tipografik shkala (1.2 nisbat) */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 0.9375rem;
+    --text-read: 1.0625rem;
+    --text-read--line-height: 1.65;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        @apply bg-paper font-sans text-base text-ink antialiased;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+        border-radius: 6px;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    ::selection {
+        background: var(--firuza-soft);
+    }
+}
+
+@layer components {
+    /* ---- Tugmalar ---- */
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 select-none disabled:cursor-not-allowed disabled:opacity-50;
+    }
+    .btn-primary {
+        @apply bg-lapis text-white hover:bg-lapis-hover;
+    }
+    @media (prefers-color-scheme: dark) {
+        .btn-primary {
+            @apply text-paper;
+        }
+    }
+    .btn-secondary {
+        @apply border border-line bg-surface text-ink hover:bg-sunken;
+    }
+    .btn-ghost {
+        @apply text-ink-soft hover:bg-sunken hover:text-ink;
+    }
+    .btn-danger {
+        @apply bg-anor text-white hover:opacity-90;
+    }
+    .btn-sm {
+        @apply px-3 py-1.5 text-xs;
+    }
+    .btn-lg {
+        @apply px-6 py-3 text-base;
+    }
+
+    /* ---- Forma elementlari ---- */
+    .field-label {
+        @apply mb-1.5 block text-sm font-medium text-ink-soft;
+    }
+    .field {
+        @apply block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted transition-colors focus:border-lapis focus:outline-none focus:ring-2 focus:ring-lapis-soft;
+    }
+    .field-error {
+        @apply mt-1.5 text-sm text-anor;
+    }
+    .field-hint {
+        @apply mt-1.5 text-sm text-muted;
+    }
+
+    /* ---- Post matni: o‘qish uchun serif ---- */
+    .prose-post {
+        @apply font-serif text-read text-ink break-words;
+        hyphens: auto;
+    }
+    .prose-post a.link,
+    .prose-post a.mention,
+    .prose-post a.hashtag {
+        @apply text-lapis hover:underline;
+    }
+    .prose-post a.hashtag {
+        @apply font-sans text-[0.95em] font-medium;
+    }
+
+    .clamp-post {
+        display: -webkit-box;
+        -webkit-line-clamp: 9;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ---- Navigatsiya ---- */
+    .nav-item {
+        @apply flex items-center gap-3.5 rounded-full px-4 py-2.5 text-[15px] text-ink-soft transition-colors hover:bg-sunken hover:text-ink;
+    }
+    .nav-item[aria-current='page'] {
+        @apply font-semibold text-ink;
+    }
+
+    .tab {
+        @apply relative px-1 pt-3 pb-3 text-sm font-medium text-muted transition-colors hover:text-ink;
+    }
+    .tab[aria-current='page'],
+    .tab[aria-selected='true'] {
+        @apply text-ink;
+    }
+    .tab[aria-current='page']::after,
+    .tab[aria-selected='true']::after {
+        content: '';
+        @apply absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-firuza;
+    }
+
+    /* Post kartochkasi: quti emas — gorizontal chiziqlar bilan ajratilgan oqim */
+    .stream > * + * {
+        @apply border-t border-line;
+    }
+
+    .chip {
+        @apply inline-flex items-center gap-1 rounded-full bg-sunken px-2.5 py-1 text-xs font-medium text-ink-soft hover:text-ink;
+    }
+
+    .panel {
+        @apply rounded-2xl border border-line bg-surface;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }
