@@ -21,7 +21,7 @@ foreach ($required as $ext) {
     if (extension_loaded($ext)) {
         echo "  [OK] {$ext}\n";
     } else {
-        echo "  [X] {$ext} kengaytmasi yoqilmagan — php.ini da ';extension={$ext}' qatoridagi ';' ni olib tashlang\n";
+        echo "  [X] {$ext} kengaytmasi yoqilmagan - php.ini da ';extension={$ext}' qatoridagi ';' ni olib tashlang\n";
         $ok = false;
     }
 }
@@ -54,7 +54,7 @@ $set('DB_CONNECTION', 'sqlite');
 foreach (['DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD'] as $key) {
     $content = preg_replace("/^{$key}=/m", "# {$key}=", $content);
 }
-// Lokal ko‘rish uchun navbat darhol bajariladi (alohida worker shart emas).
+// Lokal ko'rish uchun navbat darhol bajariladi (alohida worker shart emas).
 $set('QUEUE_CONNECTION', 'sync');
 $set('SMS_DRIVER', 'log');
 $set('AI_PROVIDER', 'fake');
