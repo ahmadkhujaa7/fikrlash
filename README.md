@@ -27,6 +27,16 @@ O‘zbek tilidagi fikr almashish platformasi: foydalanuvchilar fikr, g‘oya va 
 
 ## 1. Tez boshlash
 
+### Windows: ikki marta bosish bilan
+
+1. PHP 8.3+, Composer va Node.js o‘rnatilgan bo‘lsin — eng osoni [Laravel Herd](https://herd.laravel.com) yoki [Laragon](https://laragon.org).
+2. **`setup.bat`** ni ikki marta bosing — muhitni tekshiradi, SQLite bazani yaratadi, demo ma'lumotlarni yuklaydi, CSS/JS'ni yig‘adi (MySQL shart emas).
+3. **`start.bat`** ni ikki marta bosing — brauzerda http://localhost:8000 ochiladi.
+
+macOS/Linux: `./setup.sh`, so‘ng `php artisan serve`.
+
+### Qo‘lda o‘rnatish (MySQL bilan)
+
 **Kerak:** PHP 8.3+ (`gd`, `intl`, `mbstring`, `pdo_mysql`, `exif`, `fileinfo`, `zip` kengaytmalari), Composer 2, Node.js 20+, MySQL 8 (yoki sinov uchun SQLite).
 Windows'da eng oson yo‘l — [Laragon](https://laragon.org) yoki [Laravel Herd](https://herd.laravel.com): PHP, MySQL va Composer bitta o‘rnatishda keladi.
 
