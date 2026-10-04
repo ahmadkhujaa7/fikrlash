@@ -1,9 +1,14 @@
 @extends('layouts.app')
 
-@section('content')
-    <div class="border-b border-line px-5 pt-5">
-        <h1 class="font-serif text-2xl font-semibold">Sozlamalar</h1>
+@section('sidebar')
+    <div class="space-y-3 text-[13px] leading-relaxed text-muted">
+        <p>Telefon raqamingiz va jins, tug‘ilgan sana kabi ma'lumotlar boshqalarga ko‘rsatilmaydi.</p>
+        <p><a href="{{ route('privacy') }}" class="text-ink underline underline-offset-4">Maxfiylik siyosati</a></p>
     </div>
+@endsection
+
+@section('content')
+    <x-page-header title="Sozlamalar" class="!pb-4" />
     <x-tabs :items="[
         ['label' => 'Profil', 'href' => route('settings.profile'), 'active' => request()->routeIs('settings.profile')],
         ['label' => 'Xavfsizlik', 'href' => route('settings.security'), 'active' => request()->routeIs('settings.security')],

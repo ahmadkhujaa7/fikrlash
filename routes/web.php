@@ -12,6 +12,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SavedController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Settings;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,7 +53,7 @@ Route::view('/about', 'pages.about')->name('about');
 Route::view('/terms', 'pages.terms')->name('terms');
 Route::view('/privacy', 'pages.privacy')->name('privacy');
 Route::view('/docs/api', 'docs.api')->name('docs.api');
-Route::get('/sitemap.xml', \App\Http\Controllers\SitemapController::class)->name('sitemap');
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/docs/openapi.json', fn () => response()->file(base_path('docs/openapi.json'), ['Content-Type' => 'application/json']))->name('docs.openapi');
 
 // ---- Tizimga kirganlar ----

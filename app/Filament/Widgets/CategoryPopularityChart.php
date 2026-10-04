@@ -31,8 +31,8 @@ class CategoryPopularityChart extends ChartWidget
 
         return [
             'datasets' => [
-                ['label' => 'Postlar', 'data' => $rows->pluck('posts')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#1f6f5c'],
-                ['label' => 'Like', 'data' => $rows->pluck('likes')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#f59e0b'],
+                ['label' => 'Postlar', 'data' => $rows->pluck('posts')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#2343b8'],
+                ['label' => 'Like', 'data' => $rows->pluck('likes')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#a8a29e'],
             ],
             'labels' => $rows->pluck('name')->all(),
         ];

@@ -31,8 +31,8 @@ class EngagementChart extends ChartWidget
 
         return [
             'datasets' => [
-                ['label' => 'Like', 'data' => $days->map(fn ($d) => (int) ($likes[$d] ?? 0))->all(), 'backgroundColor' => '#e11d48'],
-                ['label' => 'Saqlash', 'data' => $days->map(fn ($d) => (int) ($saves[$d] ?? 0))->all(), 'backgroundColor' => '#1f6f5c'],
+                ['label' => 'Like', 'data' => $days->map(fn ($d) => (int) ($likes[$d] ?? 0))->all(), 'backgroundColor' => '#d92d4b'],
+                ['label' => 'Saqlash', 'data' => $days->map(fn ($d) => (int) ($saves[$d] ?? 0))->all(), 'backgroundColor' => '#2343b8'],
             ],
             'labels' => $days->map(fn ($d) => Carbon::parse($d)->format('d.m'))->all(),
         ];

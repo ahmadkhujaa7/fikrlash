@@ -2,7 +2,7 @@
 @section('title', 'Telefonni tasdiqlash')
 
 @section('content')
-    <h1 class="font-serif text-3xl font-semibold leading-tight">Kodni kiriting</h1>
+    <h1 class="display !text-[2.25rem]">Kodni kiriting</h1>
     <p class="mt-2 text-ink-soft">{{ $maskedPhone }} raqamiga 6 xonali kod yuborildi. Kod {{ config('fikrlash.otp.ttl_minutes') }} daqiqa amal qiladi.</p>
 
     @if (session('status'))

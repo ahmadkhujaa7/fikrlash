@@ -2,7 +2,7 @@
 @section('title', 'Ro‘yxatdan o‘tish')
 
 @section('content')
-    <h1 class="font-serif text-3xl font-semibold leading-tight">Fikrlaringiz uchun joy</h1>
+    <h1 class="display !text-[2.25rem]">Fikrlaringiz uchun joy</h1>
     <p class="mt-2 text-ink-soft">Telefon raqamingizga tasdiqlash kodi yuboramiz.</p>
 
     @unless ($registrationOpen)
@@ -19,7 +19,7 @@
             <x-input name="password_confirmation" label="Parolni takrorlang" type="password" autocomplete="new-password" required />
 
             <label class="flex items-start gap-3 text-sm text-ink-soft">
-                <input type="checkbox" name="terms" value="1" class="mt-0.5 size-4 accent-[var(--lapis)]" @checked(old('terms'))>
+                <input type="checkbox" name="terms" value="1" class="mt-0.5 size-4 accent-[var(--ink)]" @checked(old('terms'))>
                 <span><a href="{{ route('terms') }}" target="_blank" class="text-lapis hover:underline">Foydalanish shartlari</a> va
                       <a href="{{ route('privacy') }}" target="_blank" class="text-lapis hover:underline">maxfiylik siyosati</a>ga roziman.</span>
             </label>

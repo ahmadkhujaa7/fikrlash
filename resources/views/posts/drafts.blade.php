@@ -2,10 +2,7 @@
 @section('title', 'Qoralamalar')
 
 @section('content')
-    <div class="border-b border-line px-5 py-4">
-        <h1 class="font-serif text-xl font-semibold">Qoralamalar</h1>
-        <p class="text-sm text-muted">Faqat sizga ko‘rinadi. Tayyor bo‘lganda chop eting.</p>
-    </div>
+    <x-page-header title="Qoralamalar" text="Faqat sizga ko‘rinadi. Tayyor bo‘lganda chop eting." class="border-b border-line" />
     @forelse ($posts as $post)
         <a href="{{ route('posts.edit', $post) }}" class="block border-b border-line px-5 py-4 hover:bg-paper/60">
             <p class="prose-post line-clamp-3">{{ $post->content }}</p>

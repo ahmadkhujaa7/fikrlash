@@ -13,8 +13,8 @@
 @endphp
 
 @section('content')
-    <article class="px-5 py-8 sm:px-8">
-        <h1 class="font-serif text-3xl font-semibold">Fikrlash.uz API</h1>
+    <article class="px-4 pb-16 pt-12 sm:px-5">
+        <h1 class="display !text-[2.25rem]">Fikrlash.uz API</h1>
         <p class="mt-3 text-ink-soft">REST API, versiya 1. Asosiy manzil: <code class="rounded bg-sunken px-1.5 py-0.5 text-sm">{{ url('/api/v1') }}</code></p>
 
         <h2 class="mt-8 text-lg font-semibold">Autentifikatsiya</h2>
@@ -36,7 +36,7 @@
         <p class="mt-4"><a href="{{ route('docs.openapi') }}" class="btn btn-secondary btn-sm">OpenAPI (JSON) yuklab olish</a></p>
 
         @foreach ($groups as $tag => $endpoints)
-            <h2 class="mt-10 font-serif text-xl font-semibold">{{ $tag }}</h2>
+            <h2 class="mt-12 font-serif text-2xl font-medium">{{ $tag }}</h2>
             <ul class="mt-3 divide-y divide-line rounded-2xl border border-line">
                 @foreach ($endpoints as $e)
                     <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3">

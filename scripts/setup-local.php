@@ -10,7 +10,7 @@ $ok = true;
 echo "\n== Fikrlash.uz: muhit tekshiruvi ==\n";
 
 if (version_compare(PHP_VERSION, '8.3.0', '<')) {
-    echo "  [X] PHP 8.3+ kerak, sizda: ".PHP_VERSION."\n";
+    echo '  [X] PHP 8.3+ kerak, sizda: '.PHP_VERSION."\n";
     $ok = false;
 } else {
     echo '  [OK] PHP '.PHP_VERSION."\n";

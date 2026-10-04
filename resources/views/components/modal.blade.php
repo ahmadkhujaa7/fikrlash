@@ -8,7 +8,7 @@
              class="relative w-full {{ $maxWidth }} rounded-t-3xl bg-surface p-6 shadow-xl sm:rounded-3xl">
             @if ($title)
                 <div class="mb-4 flex items-start justify-between gap-4">
-                    <h2 class="font-serif text-xl font-semibold">{{ $title }}</h2>
+                    <h2 class="font-serif text-2xl font-medium tracking-[-0.01em]">{{ $title }}</h2>
                     <button type="button" class="btn-ghost -mr-2 -mt-1 rounded-full p-2" @click="{{ $show }} = false" aria-label="Yopish">
                         <x-ico name="x" />
                     </button>

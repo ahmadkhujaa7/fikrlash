@@ -1,8 +1,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="theme-color" content="#f6f7f5" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1519" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
 @php
     $pageTitle = trim($__env->yieldContent('title'));
     $fullTitle = $pageTitle ? $pageTitle.' — Fikrlash.uz' : 'Fikrlash.uz — fikrlar, g‘oyalar va savollar';
@@ -22,5 +22,5 @@
 @stack('meta')
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.bunny.net">
-<link rel="stylesheet" href="https://fonts.bunny.net/css?family=literata:400,400i,600,700|onest:400,500,600,700&display=swap">
+<link rel="stylesheet" href="https://fonts.bunny.net/css?family=newsreader:400,400i,500,500i,600|onest:400,500,600&display=swap">
 @vite(['resources/css/app.css', 'resources/js/app.js'])

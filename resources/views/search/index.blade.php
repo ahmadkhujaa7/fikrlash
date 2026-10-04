@@ -2,13 +2,13 @@
 @section('title', $q ? '“'.$q.'” — qidiruv' : 'Qidiruv')
 
 @section('content')
-    <div class="sticky top-[57px] z-20 border-b border-line bg-surface/95 backdrop-blur lg:top-0">
-        <form action="{{ route('search') }}" method="GET" role="search" class="px-4 pt-3 sm:px-5">
+    <div class="sticky top-16 z-20 border-b border-line bg-paper/95 backdrop-blur-md">
+        <form action="{{ route('search') }}" method="GET" role="search" class="px-4 pt-8 sm:px-5">
             <label class="relative block">
                 <span class="sr-only">Qidiruv</span>
-                <x-ico name="search" class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-                <input type="search" name="q" value="{{ $q }}" autofocus placeholder="Fikr, odam yoki #teg qidiring"
-                       class="field rounded-full !border-transparent !bg-sunken !pl-11 focus:!bg-surface">
+                <x-ico name="search" size="size-6" class="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-muted" />
+                <input type="search" name="q" value="{{ $q }}" autofocus placeholder="Fikr, odam yoki #teg"
+                       class="block w-full border-0 bg-transparent py-3 pl-10 pr-0 font-serif text-[1.75rem] tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0">
                 <input type="hidden" name="type" value="{{ $type }}">
             </label>
         </form>

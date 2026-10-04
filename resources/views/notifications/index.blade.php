@@ -5,27 +5,25 @@
     use App\Enums\NotificationType as T;
     use App\Support\NotificationPresenter;
     $icons = [
-        T::Followed->value => ['user', 'text-lapis bg-lapis-soft'],
+        T::Followed->value => ['user', 'text-ink-soft bg-sunken'],
         T::PostLiked->value => ['heart', 'text-anor bg-anor-soft'],
-        T::PostCommented->value => ['chat', 'text-lapis bg-lapis-soft'],
-        T::CommentReplied->value => ['reply', 'text-lapis bg-lapis-soft'],
-        T::Mentioned->value => ['hashtag', 'text-firuza bg-firuza-soft'],
-        T::PostModerated->value => ['shield', 'text-amber bg-amber-soft'],
-        T::System->value => ['bulb', 'text-firuza bg-firuza-soft'],
+        T::PostCommented->value => ['chat', 'text-ink-soft bg-sunken'],
+        T::CommentReplied->value => ['reply', 'text-ink-soft bg-sunken'],
+        T::Mentioned->value => ['hashtag', 'text-ink-soft bg-sunken'],
+        T::PostModerated->value => ['shield', 'text-ink-soft bg-sunken'],
+        T::System->value => ['bulb', 'text-ink-soft bg-sunken'],
     ];
 @endphp
 
 @section('content')
-    <div class="border-b border-line px-5 py-5">
-        <h1 class="font-serif text-2xl font-semibold">Bildirishnomalar</h1>
-    </div>
+    <x-page-header title="Bildirishnomalar" class="border-b border-line" />
     <ul class="stream">
         @forelse ($notifications as $n)
             @php
                 $p = NotificationPresenter::present($n);
                 [$icon, $tone] = $icons[$n->type->value];
             @endphp
-            <li class="relative flex gap-3 px-4 py-4 sm:px-5 {{ $n->isRead() ? '' : 'bg-lapis-soft/40' }}">
+            <li class="relative flex gap-4 px-4 py-5 sm:px-5 {{ $n->isRead() ? '' : 'bg-sunken/70' }}">
                 <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full {{ $tone }}">
                     <x-ico :name="$icon" size="size-5" :solid="$n->type === T::PostLiked" />
                 </span>

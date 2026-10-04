@@ -2,7 +2,7 @@
 @section('title', 'Yangi parol')
 
 @section('content')
-    <h1 class="font-serif text-3xl font-semibold leading-tight">Yangi parol</h1>
+    <h1 class="display !text-[2.25rem]">Yangi parol</h1>
     <p class="mt-2 text-ink-soft">{{ session('status') ?? $maskedPhone.' raqamiga yuborilgan kodni kiriting.' }}</p>
 
     <form method="POST" action="{{ route('password.reset') }}" class="mt-8 space-y-4">

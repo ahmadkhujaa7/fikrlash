@@ -2,9 +2,7 @@
 @section('title', '#'.($tag?->name ?? $slug))
 
 @section('content')
-    <div class="border-b border-line px-5 py-5">
-        <h1 class="font-serif text-2xl font-semibold">#{{ $tag?->name ?? $slug }}</h1>
-    </div>
+    <x-page-header :title="'#'.($tag?->name ?? $slug)" class="border-b border-line" />
     @if ($posts)
         @include('partials.feed', ['emptyTitle' => 'Bu teg bilan post yo‘q'])
     @else

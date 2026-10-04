@@ -3,8 +3,8 @@
     <form @submit.prevent="send" class="space-y-2">
         <p class="mb-3 text-sm text-muted">Shikoyatingizni moderatorlar ko‘rib chiqadi. Kim yuborgani muallifga ko‘rsatilmaydi.</p>
         @foreach (\App\Enums\ReportReason::cases() as $reason)
-            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm has-[:checked]:border-lapis has-[:checked]:bg-lapis-soft">
-                <input type="radio" name="reason" value="{{ $reason->value }}" x-model="reason" class="accent-[var(--lapis)]">
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm has-[:checked]:border-ink has-[:checked]:bg-sunken">
+                <input type="radio" name="reason" value="{{ $reason->value }}" x-model="reason" class="accent-[var(--ink)]">
                 {{ $reason->getLabel() }}
             </label>
         @endforeach

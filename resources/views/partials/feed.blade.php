@@ -1,6 +1,6 @@
 {{-- Postlar oqimi + avtomatik keyingi sahifa. $empty — bo‘sh holat uchun slot o‘rnida. --}}
 <div x-data="infinite('{{ $posts->hasMorePages() ? $posts->nextPageUrl() : '' }}')">
-    <div x-ref="list" class="stream border-b border-line">
+    <div x-ref="list" class="stream">
         @foreach ($posts as $post)
             @include('partials.post-card', ['post' => $post])
         @endforeach

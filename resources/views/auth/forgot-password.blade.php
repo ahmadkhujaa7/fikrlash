@@ -2,7 +2,7 @@
 @section('title', 'Parolni tiklash')
 
 @section('content')
-    <h1 class="font-serif text-3xl font-semibold leading-tight">Parolni tiklash</h1>
+    <h1 class="display !text-[2.25rem]">Parolni tiklash</h1>
     <p class="mt-2 text-ink-soft">Ro‘yxatdan o‘tgan telefon raqamingizni kiriting — tasdiqlash kodini yuboramiz.</p>
 
     <form method="POST" action="{{ route('password.send') }}" class="mt-8 space-y-4">

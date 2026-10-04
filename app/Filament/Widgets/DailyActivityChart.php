@@ -39,9 +39,9 @@ class DailyActivityChart extends ChartWidget
 
         return [
             'datasets' => [
-                ['label' => 'Yangi foydalanuvchilar', 'data' => $series($users), 'borderColor' => '#1f6f5c', 'backgroundColor' => 'rgba(31,111,92,.1)', 'tension' => .3],
-                ['label' => 'Postlar', 'data' => $series($posts), 'borderColor' => '#d97706', 'backgroundColor' => 'rgba(217,119,6,.1)', 'tension' => .3],
-                ['label' => 'Izohlar', 'data' => $series($comments), 'borderColor' => '#6366f1', 'backgroundColor' => 'rgba(99,102,241,.1)', 'tension' => .3],
+                ['label' => 'Yangi foydalanuvchilar', 'data' => $series($users), 'borderColor' => '#2343b8', 'backgroundColor' => 'rgba(35,67,184,.08)', 'tension' => .3],
+                ['label' => 'Postlar', 'data' => $series($posts), 'borderColor' => '#44403c', 'backgroundColor' => 'rgba(68,64,60,.06)', 'tension' => .3],
+                ['label' => 'Izohlar', 'data' => $series($comments), 'borderColor' => '#9a6416', 'backgroundColor' => 'rgba(154,100,22,.06)', 'tension' => .3],
                 ['label' => 'Faol foydalanuvchilar (oxirgi faollik)', 'data' => $series($active), 'borderColor' => '#94a3b8', 'borderDash' => [4, 4], 'tension' => .3],
             ],
             'labels' => $days->map(fn ($d) => Carbon::parse($d)->format('d.m'))->all(),

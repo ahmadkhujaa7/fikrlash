@@ -2,7 +2,7 @@
 @section('title', 'Kirish')
 
 @section('content')
-    <h1 class="font-serif text-3xl font-semibold leading-tight">Xush kelibsiz</h1>
+    <h1 class="display !text-[2.25rem]">Xush kelibsiz</h1>
     <p class="mt-2 text-ink-soft">Telefon raqam yoki username bilan kiring.</p>
 
     @if (session('status'))
@@ -17,7 +17,7 @@
             <a href="{{ route('password.request') }}" class="mt-2 inline-block text-sm text-lapis hover:underline">Parolni unutdingizmi?</a>
         </div>
         <label class="flex items-center gap-3 text-sm text-ink-soft">
-            <input type="checkbox" name="remember" value="1" class="size-4 accent-[var(--lapis)]" checked> Meni eslab qol
+            <input type="checkbox" name="remember" value="1" class="size-4 accent-[var(--ink)]" checked> Meni eslab qol
         </label>
         <button type="submit" class="btn btn-primary btn-lg w-full">Kirish</button>
     </form>

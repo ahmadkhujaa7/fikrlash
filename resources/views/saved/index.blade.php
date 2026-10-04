@@ -2,9 +2,6 @@
 @section('title', 'Saqlanganlar')
 
 @section('content')
-    <div class="border-b border-line px-5 py-5">
-        <h1 class="font-serif text-2xl font-semibold">Saqlanganlar</h1>
-        <p class="mt-1 text-sm text-muted">Faqat sizga ko‘rinadi.</p>
-    </div>
+    <x-page-header title="Saqlanganlar" text="Keyinroq o‘qish uchun belgilagan fikrlaringiz. Faqat sizga ko‘rinadi." class="border-b border-line" />
     @include('partials.feed', ['emptyTitle' => 'Hali hech narsa saqlanmagan', 'emptyText' => 'Post ostidagi belgi orqali keyinroq o‘qish uchun saqlab qo‘ying.'])
 @endsection
