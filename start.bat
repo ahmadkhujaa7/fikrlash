@@ -14,6 +14,9 @@ if not exist public\build\manifest.json (echo CSS/JS yig'ilmagan - setup.bat ni 
 rem Yangilanishlardan keyin: bazaga yangi jadvallar qo'shiladi (mavjud ma'lumot o'chmaydi).
 php artisan migrate --force >nul 2>&1 || echo Ogohlantirish: bazani yangilab bo'lmadi - "php artisan migrate" ni qo'lda ishga tushiring.
 
+rem Yuklangan fayllar (logo, avatar, post rasmlari) brauzerga ko'rinishi uchun.
+if not exist public\storage php artisan storage:link >nul 2>&1
+
 rem Dizayn fayllari yangilangan bo'lsa - CSS/JS qayta yig'iladi.
 php -r "$m=@filemtime('public/build/manifest.json'); $t=0; foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator('resources',FilesystemIterator::SKIP_DOTS)) as $f){$t=max($t,$f->getMTime());} exit($t>$m?1:0);" || (
     where npm >nul 2>nul && (
