@@ -53,6 +53,17 @@ return [
         'daily_limit' => (int) env('POSTS_DAILY_LIMIT', 50),
     ],
 
+    // Maqola: sarlavha + bloklar (paragraf, kichik sarlavha, rasm, iqtibos, ro‘yxat, ajratgich).
+    'articles' => [
+        'title_max' => 200,
+        'max_length' => 40000,   // butun matn (belgi)
+        'max_blocks' => 300,
+        'max_images' => 30,
+        'block_max' => 6000,     // bitta paragraf
+        'caption_max' => 300,
+        'unattached_ttl_days' => 7, // post'ga biriktirilmagan yuklangan rasmlar shu muddatdan keyin o‘chiriladi
+    ],
+
     'comments' => [
         'max_length' => 2000,
     ],

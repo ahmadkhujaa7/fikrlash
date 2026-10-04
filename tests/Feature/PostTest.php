@@ -200,22 +200,21 @@ class PostTest extends TestCase
         $this->get('/compose/users?q=aziz')->assertRedirect(); // faqat tizimga kirganlar uchun
     }
 
-    public function test_post_opens_as_fragment_over_the_feed(): void
+    public function test_post_opens_as_its_own_page_and_feed_can_be_restored(): void
     {
-        $post = Post::factory()->create(['content' => 'Lenta ustida ochiladigan post']);
+        $post = Post::factory()->create(['content' => 'Alohida sahifada ochiladigan post']);
         $viewer = User::factory()->create();
 
-        $response = $this->actingAs($viewer)->get("/posts/{$post->id}", ['X-Fragment' => 'post'])->assertOk();
-        $html = $response->getContent();
-        $this->assertStringNotContainsString('<html', $html);
-        $this->assertStringContainsString('data-title=', $html);
-        $this->assertStringContainsString('Lenta ustida ochiladigan post', $html);
-        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
-        // Oynada ochish ham "ochdi" signali va ko‘rish sifatida hisoblanadi.
+        // Har doim to‘liq sahifa: ulashish, yangilash va "orqaga" tabiiy ishlaydi.
+        $this->actingAs($viewer)->get("/posts/{$post->id}", ['X-Fragment' => 'post'])
+            ->assertOk()->assertSee('<html', false)->assertSee('Alohida sahifada ochiladigan post')->assertSee('backOr(', false);
         $this->assertDatabaseHas('post_views', ['user_id' => $viewer->id, 'post_id' => $post->id]);
 
-        // Lentadagi kartochkalar oynada ochiladi; to‘liq sahifada "Orqaga" tugmasi bor.
-        $this->actingAs($viewer)->get('/')->assertSee('data-post-open', false)->assertSee('x-data="postViewer"', false);
-        $this->actingAs($viewer)->get("/posts/{$post->id}")->assertSee('backOr(', false);
+        // Lenta: kartochka bosilsa post ochiladi; orqaga qaytishda tiklash uchun belgilar bor; eski oyna yo‘q.
+        $this->actingAs($viewer)->get('/')
+            ->assertSee('data-post-open', false)
+            ->assertSee('data-feed', false)
+            ->assertSee('data-feed-list', false)
+            ->assertDontSee('postViewer', false);
     }
 }

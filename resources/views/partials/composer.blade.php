@@ -46,7 +46,7 @@
       @if ($compact) x-init="expanded = expanded || {{ $errors->any() ? 'true' : 'false' }}" @endif
       @submit="onSubmit($event)" @compose-focus.window="expanded = true; $nextTick(() => $refs.text.focus())"
       @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="drop($event)" @paste="paste($event)"
-      class="relative transition-shadow {{ $compact ? 'border-b border-line px-4 pb-4 pt-5 sm:px-6' : 'flex min-h-[calc(100dvh-8.6rem)] flex-col px-4 pt-5 sm:px-6 md:min-h-0' }}"
+      class="relative transition-shadow {{ $compact ? 'border-b border-line px-4 pb-4 pt-5 sm:px-6' : 'flex min-h-[calc(100dvh-3.5rem)] flex-col px-4 pt-5 sm:px-6 md:min-h-0' }}"
       :class="{ 'ring-2 ring-inset ring-lapis/40': dragging }">
     @csrf
     @if ($post) @method('PUT') @endif
@@ -144,41 +144,14 @@
             @if ($full)
                 {{-- Teglar: matndagi #teglar avtomatik + qo‘lda qo‘shilganlar (mavjudini tanlash yoki yangi yaratish) --}}
                 <div class="mt-6 border-t border-line pt-4" x-show="!showPreview">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <template x-for="t in textTags" :key="'text-' + t">
-                            <span class="inline-flex items-center rounded-full bg-lapis-soft px-3 py-1 text-[13px] text-lapis" title="Matndan olingan teg" x-text="'#' + t"></span>
-                        </template>
-                        <template x-for="(t, i) in tags" :key="'chip-' + t">
-                            <span class="inline-flex items-center gap-1 rounded-full border border-line-strong bg-paper py-1 pl-3 pr-1 text-[13px] text-ink">
-                                <span x-text="'#' + t"></span>
-                                <button type="button" class="grid size-5 place-items-center rounded-full text-muted hover:bg-sunken hover:text-ink" @click="removeTag(i)" :aria-label="'#' + t + ' tegini olib tashlash'"><x-ico name="x" size="size-3" /></button>
-                            </span>
-                        </template>
-
-                        <div class="relative" x-show="tags.length < maxTags" @click.outside="tagSuggest.open = false">
-                            <label class="sr-only" for="{{ $field }}-tag">Teg qo‘shish</label>
-                            <input id="{{ $field }}-tag" x-ref="tagInput" x-model="tagQuery" type="text" autocomplete="off" enterkeyhint="done" maxlength="51"
-                                   placeholder="+ Teg qo‘shish" @input.debounce.150ms="loadTagSuggestions()" @focus="loadTagSuggestions()" @keydown="tagKeydown($event)"
-                                   class="w-36 rounded-full border border-dashed border-line-strong bg-transparent px-3 py-1 text-[13px] text-ink placeholder:text-muted focus:w-48 focus:border-lapis focus:outline-none">
-                            <div x-show="tagSuggest.open" x-cloak class="absolute left-0 z-30 mt-2 w-64 overflow-hidden rounded-2xl border border-line bg-surface py-1.5 shadow-[0_16px_48px_-16px_rgb(0_0_0/0.3)]">
-                                <template x-for="(item, i) in tagSuggest.items" :key="item.key">
-                                    <button type="button" @mousedown.prevent="addTag(item.name)" @mouseenter="tagSuggest.index = i"
-                                            class="flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-sm" :class="i === tagSuggest.index ? 'bg-sunken' : ''">
-                                        <span class="truncate"><span x-show="item.isNew" class="mr-1 text-[12px] font-medium text-lapis">Yaratish</span><span class="font-serif text-[1rem]" x-text="'#' + item.name"></span></span>
-                                        <span class="shrink-0 text-[12px] text-muted" x-show="!item.isNew" x-text="item.count + ' ta fikr'"></span>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="mt-2.5 text-[12px] leading-relaxed text-muted">Teg qo‘shsangiz, fikringizni topish osonlashadi. Matnda <span class="text-ink-soft">#so‘z</span> yozsangiz ham teg bo‘ladi. Ko‘pi bilan <span x-text="maxTags"></span> ta.</p>
+                    @include('partials.tag-field', ['field' => $field])
                 </div>
             @endif
         </div>
     </div>
 
     {{-- Asboblar paneli. To‘liq sahifada mobil ekranda pastga yopishadi. --}}
-    <div x-show="expanded" @if ($compact) x-cloak x-transition.opacity.duration.150ms @endif
+    <div x-show="expanded" @if ($compact) x-cloak x-transition.opacity.duration.150ms @else :style="kb ? `transform: translateY(-${kb}px)` : ''" @endif
          class="{{ $compact ? 'mt-3 sm:pl-[3.125rem]' : 'sticky bottom-0 -mx-4 mt-6 border-t border-line bg-paper/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:-mx-6 sm:rounded-b-[27px] sm:px-5' }}">
         <div class="flex items-center gap-0.5">
             <label class="grid size-10 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-sunken hover:text-lapis" title="Rasm qo‘shish — yoki sudrab tashlang / Ctrl+V (JPG, PNG, WEBP, 5 MB gacha)">
@@ -190,6 +163,12 @@
                     title="Teg qo‘shish (#)" @click="{{ $full ? '$refs.tagInput ? $refs.tagInput.focus() : insertSymbol(\'#\')' : 'insertSymbol(\'#\')' }}">#<span class="sr-only">Teg qo‘shish</span></button>
             <button type="button" class="grid size-10 place-items-center rounded-full text-[1.15rem] leading-none text-muted transition-colors hover:bg-sunken hover:text-lapis"
                     title="Kimnidir eslatish (@)" @click="insertSymbol('@')">@<span class="sr-only">Kimnidir eslatish</span></button>
+            @if ($compact)
+                <a href="{{ route('posts.create', ['type' => 'article']) }}" class="ml-1 inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-[12px] font-medium text-ink-soft transition-colors hover:border-lapis hover:text-lapis"
+                   title="Maqola yozish — sarlavha, rasmlar va bo‘limlar bilan">
+                    <x-ico name="newspaper" size="size-4" /> Maqola
+                </a>
+            @endif
             @if ($full)
                 <button type="button" class="grid size-10 place-items-center rounded-full transition-colors hover:bg-sunken"
                         :class="showPreview ? 'bg-lapis-soft text-lapis' : 'text-muted hover:text-lapis'" @click="togglePreview()"

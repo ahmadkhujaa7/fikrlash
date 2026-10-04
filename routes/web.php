@@ -7,6 +7,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\ComposeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -41,6 +42,7 @@ Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')-
 Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->middleware('auth')->name('impersonate.stop');
 
 // ---- Ochiq sahifalar ----
+Route::get('/manifest.webmanifest', ManifestController::class)->name('manifest');
 Route::get('/posts/{post}', [PostController::class, 'show'])->whereNumber('post')->name('posts.show');
 Route::get('/posts/{post}/comments', [CommentController::class, 'index'])->whereNumber('post')->name('posts.comments');
 Route::get('/t/{slug}', [TagController::class, 'show'])->name('tags.show');
@@ -75,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/drafts', [PostController::class, 'drafts'])->name('posts.drafts');
     Route::get('/compose/tags', [ComposeController::class, 'tags'])->middleware('throttle:search-live')->name('compose.tags');
     Route::get('/compose/users', [ComposeController::class, 'users'])->middleware('throttle:search-live')->name('compose.users');
+    Route::post('/compose/images', [ComposeController::class, 'image'])->middleware('throttle:media')->name('compose.images');
 
     Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->whereNumber('post')->middleware('throttle:comments')->name('comments.store');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');

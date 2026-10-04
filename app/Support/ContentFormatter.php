@@ -16,7 +16,10 @@ final class ContentFormatter
 
     private const HASHTAG = '(?<![\p{L}\p{N}_&\/#])#(?<tag>[\p{L}\p{N}_‘’ʻʼ\']{2,50})';
 
-    public static function toHtml(string $text): string
+    /**
+     * @param  bool  $rich  Maqola uchun: **qalin** va *kursiv* ham ko‘rsatiladi (faqat oddiy matn bo‘laklarida).
+     */
+    public static function toHtml(string $text, bool $rich = false): string
     {
         $text = preg_replace("/\n{3,}/", "\n\n", str_replace(["\r\n", "\r"], "\n", trim($text))) ?? '';
         $pattern = '/'.self::URL.'|'.self::MENTION.'|'.self::HASHTAG.'/u';
@@ -25,16 +28,26 @@ final class ContentFormatter
         $offset = 0;
         preg_match_all($pattern, $text, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL);
 
+        $plain = fn (string $segment) => $rich ? self::emphasis(e($segment)) : e($segment);
+
         foreach ($matches as $match) {
             [$full, $position] = $match[0];
-            $html .= e(substr($text, $offset, $position - $offset));
+            $html .= $plain(substr($text, $offset, $position - $offset));
             $html .= self::renderToken($match, $full);
             $offset = $position + strlen($full);
         }
 
-        $html .= e(substr($text, $offset));
+        $html .= $plain(substr($text, $offset));
 
         return nl2br($html, false);
+    }
+
+    /** Escape qilingan matnga qalin/kursiv teglari (yulduzchalar e() da o‘zgarmaydi). */
+    private static function emphasis(string $escaped): string
+    {
+        $escaped = preg_replace(Article::BOLD, '<strong>$1</strong>', $escaped) ?? $escaped;
+
+        return preg_replace(Article::ITALIC, '<em>$1</em>', $escaped) ?? $escaped;
     }
 
     private static function renderToken(array $match, string $full): string

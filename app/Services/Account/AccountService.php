@@ -4,6 +4,7 @@ namespace App\Services\Account;
 
 use App\Enums\UserStatus;
 use App\Models\Comment;
+use App\Models\MediaUpload;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\Media\ImageService;
@@ -85,6 +86,7 @@ class AccountService
     {
         Post::withTrashed()->where('user_id', $user->id)->whereNotNull('image_path')
             ->pluck('image_path')->each(fn ($path) => $this->images->delete($path));
+        MediaUpload::query()->where('user_id', $user->id)->pluck('path')->each(fn ($path) => $this->images->delete($path));
         $this->images->delete($user->avatar_path);
 
         $user->forceDelete();

@@ -99,7 +99,7 @@ export function readTimer(url) {
             this.sent = this.seconds;
             api('POST', url, { seconds: delta }, { keepalive: true }).catch(() => {});
         },
-        // Lenta ustidagi oyna yopilganda (element olib tashlanadi) — o‘qish vaqti yuboriladi.
+        // Komponent olib tashlanganda ham — o‘qish vaqti yuboriladi.
         destroy() {
             this.send();
             clearInterval(this._tick);

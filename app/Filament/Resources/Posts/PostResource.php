@@ -76,6 +76,7 @@ class PostResource extends Resource
     {
         return $schema->components([
             Section::make('Post')->columns(4)->columnSpanFull()->schema([
+                TextEntry::make('title')->label('Maqola sarlavhasi')->columnSpanFull()->visible(fn (Post $r) => $r->isArticle())->weight('bold')->size('lg'),
                 TextEntry::make('content')->label('Matn')->columnSpanFull()->prose(),
                 ImageEntry::make('image_path')->label('Rasm')->disk(config('fikrlash.media.disk'))->columnSpanFull()->visible(fn (Post $r) => (bool) $r->image_path),
                 TextEntry::make('user.username')->label('Muallif')->prefix('@'),
@@ -111,7 +112,10 @@ class PostResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('content')->label('Matn')->limit(80)->wrap()->searchable()
-                    ->description(fn (Post $r) => '@'.$r->user?->username),
+                    ->formatStateUsing(fn (Post $r, $state) => $r->isArticle() ? $r->title : $state)
+                    ->description(fn (Post $r) => '@'.$r->user?->username.($r->isArticle() ? ' · maqola, '.$r->readMinutes().' daqiqa' : '')),
+                TextColumn::make('type')->label('Turi')->badge()->color(fn ($state) => $state === 'article' ? 'info' : 'gray')
+                    ->formatStateUsing(fn ($state) => $state === 'article' ? 'Maqola' : 'Fikr')->toggleable(),
                 TextColumn::make('category.name')->label('Kategoriya')->badge()->color('gray')->toggleable(),
                 TextColumn::make('status')->label('Holat')->badge()->color(fn (Post $r) => self::statusColor($r->status)),
                 TextColumn::make('visibility')->label('Ko‘rinish')->badge()->color('gray')->toggleable(isToggledHiddenByDefault: true),
@@ -126,6 +130,7 @@ class PostResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                SelectFilter::make('type')->label('Turi')->options(['post' => 'Fikr', 'article' => 'Maqola']),
                 SelectFilter::make('status')->label('Holat')->options(PostStatus::class),
                 SelectFilter::make('visibility')->label('Ko‘rinish')->options(PostVisibility::class),
                 SelectFilter::make('category')->label('Kategoriya')->relationship('category', 'name'),

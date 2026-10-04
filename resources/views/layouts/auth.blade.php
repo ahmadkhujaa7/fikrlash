@@ -15,16 +15,18 @@
 </head>
 <body @if (session('toast')) data-toast="{{ session('toast') }}" @endif>
 <div class="grid min-h-screen bg-paper lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-    <main id="main" class="flex flex-col px-5 py-8 sm:px-10 lg:px-16">
+    <main id="main" class="flex min-h-[100dvh] flex-col px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))] sm:px-10 lg:px-16">
         <a href="{{ route('home') }}" class="self-start" aria-label="Bosh sahifa"><x-logo /></a>
 
-        {{-- Mobil va planshet: kunning fikri — ixcham lojuvard panel --}}
-        <figure class="girih -mx-2 mt-6 rounded-[22px] bg-lapis-deep px-5 pb-5 pt-10 text-white lg:hidden" style="--girih-opacity:.12" aria-hidden="true">
-            <p class="font-serif text-[1.35rem] font-medium leading-[1.2] tracking-[-0.01em]">{{ $quote }}</p>
-            <figcaption class="mt-3 text-[12px] text-white/60">Kunning fikri</figcaption>
-        </figure>
+        {{-- Mobil va planshet: kunning fikri — ixcham lojuvard panel (forma ko‘p joy talab qiladigan sahifalarda yo‘q) --}}
+        @unless (View::hasSection('focus'))
+            <figure class="girih -mx-2 mt-6 rounded-[22px] bg-lapis-deep px-5 pb-5 pt-9 text-white lg:hidden" style="--girih-opacity:.12" aria-hidden="true">
+                <p class="font-serif text-[1.3rem] font-medium leading-[1.22] tracking-[-0.01em]">{{ $quote }}</p>
+                <figcaption class="mt-3 text-[12px] text-white/60">Kunning fikri</figcaption>
+            </figure>
+        @endunless
 
-        <div class="my-auto w-full max-w-[400px] py-10 lg:py-14">
+        <div class="my-auto w-full max-w-[400px] {{ View::hasSection('focus') ? 'py-8' : 'py-10' }} lg:py-14">
             @yield('content')
         </div>
         <footer class="flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted">

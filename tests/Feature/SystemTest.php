@@ -55,4 +55,16 @@ class SystemTest extends TestCase
         }
         $this->get('/c/mavjud-emas')->assertNotFound();
     }
+
+    public function test_web_app_manifest_makes_site_installable(): void
+    {
+        $this->get('/manifest.webmanifest')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/manifest+json')
+            ->assertJsonPath('display', 'standalone')
+            ->assertJsonPath('icons.2.purpose', 'maskable');
+
+        $this->get('/')->assertSee('rel="manifest"', false)->assertSee('apple-touch-icon', false);
+        $this->assertFileExists(public_path('icons/icon-512.png'));
+    }
 }

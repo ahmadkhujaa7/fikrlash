@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PostStatus;
 use App\Enums\PostVisibility;
+use App\Support\Article;
 use App\Support\TextNormalizer;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +22,9 @@ use Illuminate\Support\Str;
  * @property int $id
  * @property int $user_id
  * @property string $content
+ * @property string $type post|article
+ * @property string|null $title
+ * @property array|null $blocks
  * @property PostStatus $status
  * @property PostVisibility $visibility
  */
@@ -29,9 +33,14 @@ class Post extends Model
     /** @use HasFactory<PostFactory> */
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['content', 'category_id', 'image_path', 'status', 'visibility', 'published_at'];
+    public const TYPE_POST = 'post';
+
+    public const TYPE_ARTICLE = 'article';
+
+    protected $fillable = ['type', 'title', 'blocks', 'content', 'category_id', 'image_path', 'status', 'visibility', 'published_at'];
 
     protected $attributes = [
+        'type' => 'post',
         'status' => 'published',
         'visibility' => 'public',
         'likes_count' => 0,
@@ -45,6 +54,7 @@ class Post extends Model
         return [
             'status' => PostStatus::class,
             'visibility' => PostVisibility::class,
+            'blocks' => 'array',
             'published_at' => 'datetime',
             'edited_at' => 'datetime',
             'ai_analyzed_at' => 'datetime',
@@ -99,6 +109,11 @@ class Post extends Model
     public function saves(): HasMany
     {
         return $this->hasMany(SavedPost::class);
+    }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(MediaUpload::class);
     }
 
     public function aiAnalyses(): HasMany
@@ -172,13 +187,36 @@ class Post extends Model
         return route('posts.show', $this);
     }
 
+    public function isArticle(): bool
+    {
+        return $this->type === self::TYPE_ARTICLE;
+    }
+
+    /** Qisqa nom: maqola uchun — sarlavhasi, fikr uchun — matn boshi (bildirishnoma, sarlavha teglari). */
     public function excerpt(int $length = 160): string
     {
-        return Str::limit(preg_replace('/\s+/u', ' ', $this->content), $length);
+        return Str::limit(preg_replace('/\s+/u', ' ', $this->isArticle() ? (string) $this->title : $this->content), $length);
+    }
+
+    /** Maqola tanasidan qisqa mazmun (sarlavhasiz) — lenta kartochkasi va meta description uchun. */
+    public function summary(int $length = 220): string
+    {
+        return $this->isArticle() ? Article::excerpt($this->blocks ?? [], $length) : $this->excerpt($length);
+    }
+
+    public function readMinutes(): int
+    {
+        return Article::readMinutes($this->content);
     }
 
     public function isLong(): bool
     {
-        return mb_strlen($this->content) > config('fikrlash.posts.card_preview_length');
+        return $this->isArticle() || mb_strlen($this->content) > config('fikrlash.posts.card_preview_length');
+    }
+
+    /** Maqoladagi rasm URL'i (blokdagi yo‘l bo‘yicha). */
+    public static function mediaUrl(string $path): string
+    {
+        return Storage::disk(config('fikrlash.media.disk'))->url($path);
     }
 }

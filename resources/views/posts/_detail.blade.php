@@ -1,7 +1,6 @@
 {{--
-  Post sahifasining asosiy qismi: post, izohlar va o‘xshash fikrlar.
-  To‘liq sahifada (posts.show) ham, lenta ustida ochiladigan oynada (posts.fragment) ham ishlatiladi.
-  O‘qish vaqti shu yerda o‘lchanadi — oynada ham ishlaydi (oyna yopilganda yuboriladi).
+  Post sahifasining asosiy qismi: post (yoki maqola), izohlar va o‘xshash fikrlar.
+  O‘qish vaqti shu yerda o‘lchanadi (sahifadan chiqilganda yuboriladi).
 --}}
 <div @auth @if ($post->isPublished()) x-data="readTimer('{{ route('api.v1.posts.read', $post) }}')" @endif @endauth>
 

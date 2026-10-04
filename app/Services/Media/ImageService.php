@@ -21,10 +21,20 @@ class ImageService
 {
     public function storePostImage(UploadedFile $file): string
     {
+        return $this->storePostImageWithSize($file)['path'];
+    }
+
+    /** @return array{path: string, width: int, height: int} O‘lcham — sahifa "sakramasligi" uchun (width/height atributlari). */
+    public function storePostImageWithSize(UploadedFile $file): array
+    {
         $image = $this->load($file);
         $image = $this->resizeToWidth($image, (int) config('fikrlash.media.post_max_width'));
 
-        return $this->save($image, 'posts/'.now()->format('Y/m'));
+        return [
+            'path' => $this->save($image, 'posts/'.now()->format('Y/m')),
+            'width' => imagesx($image),
+            'height' => imagesy($image),
+        ];
     }
 
     public function storeAvatar(UploadedFile $file): string

@@ -1,6 +1,7 @@
 {{-- Postlar oqimi + avtomatik keyingi sahifa. $empty — bo‘sh holat uchun slot o‘rnida. --}}
-<div x-data="infinite('{{ $posts->hasMorePages() ? $posts->nextPageUrl() : '' }}')">
-    <div x-ref="list" class="stream">
+{{-- data-feed: orqaga qaytilganda lenta shu joyidan tiklanadi (resources/js/navigation.js). --}}
+<div x-data="infinite('{{ $posts->hasMorePages() ? $posts->nextPageUrl() : '' }}')" data-feed data-next="{{ $posts->hasMorePages() ? $posts->nextPageUrl() : '' }}">
+    <div x-ref="list" data-feed-list class="stream">
         @foreach ($posts as $post)
             @include('partials.post-card', ['post' => $post])
         @endforeach

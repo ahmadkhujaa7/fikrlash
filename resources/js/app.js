@@ -3,6 +3,7 @@ import intersect from '@alpinejs/intersect';
 import focus from '@alpinejs/focus';
 import { api, fetchHtml, postForm } from './api';
 import { initViewTracking, readTimer } from './views';
+import { captureFeed, rememberFeedChunk, restoreFeedPosition } from './navigation';
 
 window.Alpine = Alpine;
 Alpine.plugin(intersect);
@@ -29,7 +30,7 @@ Alpine.data('toggle', ({ active, count, url, onKey, offKey, countKey }) => ({
     count,
     busy: false,
     _sync: null,
-    // Bir xil post bir nechta joyda (lenta va ochilgan oyna) — holat hammasida bir xil bo‘lsin.
+    // Bir xil post sahifada bir necha joyda bo‘lishi mumkin — holat hammasida bir xil bo‘lsin.
     init() {
         this._sync = (e) => {
             if (e.detail.url !== url || e.detail.origin === this) return;
@@ -93,6 +94,10 @@ Alpine.data('infinite', (next) => ({
     next,
     loading: false,
     failed: false,
+    init() {
+        // Orqaga qaytilganda lenta saqlangan holatdan tiklangan bo‘lsa — keyingi sahifa manzili ham o‘shandan.
+        if (this.$el.hasAttribute('data-feed')) this.next = this.$el.dataset.next || null;
+    },
     async load() {
         if (!this.next || this.loading) return;
         this.loading = true;
@@ -103,7 +108,9 @@ Alpine.data('infinite', (next) => ({
             tpl.innerHTML = html;
             const page = tpl.content.querySelector('[data-page]');
             this.next = page?.dataset.next || null;
-            page?.querySelectorAll(':scope > [data-item]').forEach((el) => this.$refs.list.appendChild(el));
+            const items = [...(page?.querySelectorAll(':scope > [data-item]') ?? [])];
+            rememberFeedChunk(this.$root, items.map((el) => el.outerHTML).join(''), this.next);
+            items.forEach((el) => this.$refs.list.appendChild(el));
             initViewTracking(this.$refs.list);
         } catch {
             this.failed = true;
@@ -240,6 +247,15 @@ const TOKEN_RE = new RegExp(`(^|[\\s(])([#@])(${WORD}{0,50})$`, 'u');
 const TAG_RE = new RegExp(`(^|[^\\p{L}\\p{N}_&/#])#(${WORD}{2,50})`, 'gu');
 const TAG_NAME_RE = new RegExp(`^${WORD}{1,50}$`, 'u');
 
+/** Mobil klaviatura balandligi (px): asboblar paneli klaviatura ustida tursin (iOS va Android). */
+function watchKeyboard(callback) {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => callback(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+}
+
 const draftStore = {
     get(key) {
         try {
@@ -275,13 +291,76 @@ function formatPreview(text) {
     return html.replace(/\n/g, '<br>') || '<span class="text-muted">Matn yozilganda shu yerda ko‘rinadi.</span>';
 }
 
+/**
+ * Teg chiplari (qisqa fikr va maqola uchun umumiy): mavjud tegni tanlash yoki yangisini yaratish.
+ * Faqat oddiy xossa va metodlar — obyekt ichiga "...tagChips(opts)" bilan qo‘shiladi.
+ */
+const tagChips = (opts) => ({
+    tags: opts.tags ?? [],
+    maxTags: opts.maxTags ?? 5,
+    tagQuery: '',
+    tagSuggest: { open: false, items: [], index: 0 },
+
+    async loadTagSuggestions() {
+        const query = this.tagQuery.replace(/^#+/, '').trim();
+        try {
+            const res = await fetch(`${opts.tagsUrl}?${new URLSearchParams({ q: query })}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const taken = this.tags.map((t) => t.toLowerCase());
+            const items = data.tags.filter((t) => !taken.includes(t.name.toLowerCase())).map((t) => ({ key: t.slug, name: t.name, count: t.posts_count }));
+            if (data.can_create && query && TAG_NAME_RE.test(query.replace(/\s+/g, '_'))) {
+                items.unshift({ key: 'new', name: query.replace(/\s+/g, '_'), isNew: true });
+            }
+            this.tagSuggest = { open: items.length > 0 && document.activeElement === this.$refs.tagInput, items, index: 0 };
+        } catch {
+            /* e'tiborsiz */
+        }
+    },
+    addTag(raw) {
+        const name = String(raw ?? this.tagQuery).replace(/^#+/, '').trim().replace(/\s+/g, '_');
+        if (!name) return;
+        if (!TAG_NAME_RE.test(name)) {
+            toast('Teg faqat harf, raqam va _ belgisidan iborat bo‘lishi mumkin.', 'error');
+            return;
+        }
+        if (this.tags.length >= this.maxTags) {
+            toast(`Ko‘pi bilan ${this.maxTags} ta teg qo‘shish mumkin.`, 'error');
+            return;
+        }
+        if (!this.tags.some((t) => t.toLowerCase() === name.toLowerCase())) this.tags.push(name);
+        this.tagQuery = '';
+        this.tagSuggest.open = false;
+        this.$nextTick(() => this.$refs.tagInput?.focus());
+    },
+    removeTag(index) {
+        this.tags.splice(index, 1);
+    },
+    tagKeydown(event) {
+        const s = this.tagSuggest;
+        if (event.key === 'ArrowDown' && s.open) {
+            event.preventDefault();
+            s.index = (s.index + 1) % s.items.length;
+        } else if (event.key === 'ArrowUp' && s.open) {
+            event.preventDefault();
+            s.index = (s.index - 1 + s.items.length) % s.items.length;
+        } else if (event.key === 'Enter' || event.key === ',' || (event.key === ' ' && this.tagQuery.trim())) {
+            event.preventDefault();
+            this.addTag(s.open && s.items[s.index] && event.key === 'Enter' ? s.items[s.index].name : this.tagQuery);
+        } else if (event.key === 'Backspace' && !this.tagQuery && this.tags.length) {
+            this.tags.pop();
+        } else if (event.key === 'Escape') {
+            s.open = false;
+        }
+    },
+});
+
 Alpine.data('composer', (opts) => ({
     content: opts.content ?? '',
     initial: opts.content ?? '',
     max: opts.max,
     full: !!opts.full,
-    tags: opts.tags ?? [],
-    maxTags: opts.maxTags ?? 5,
+    ...tagChips(opts),
     preview: null,
     imageInfo: '',
     expanded: !!opts.full || (opts.content ?? '').length > 0,
@@ -290,9 +369,8 @@ Alpine.data('composer', (opts) => ({
     restored: false,
     submitting: false,
     savedLabel: '',
+    kb: 0,
     ac: { open: false, items: [], index: 0, type: null, start: 0 },
-    tagQuery: '',
-    tagSuggest: { open: false, items: [], index: 0 },
     _timers: {},
     _abort: null,
 
@@ -310,6 +388,7 @@ Alpine.data('composer', (opts) => ({
             this.$watch('tags', () => this.scheduleSave());
         }
         if (this.full) {
+            watchKeyboard((kb) => (this.kb = kb));
             // Yozilgan matn tasodifan yo‘qolmasin.
             window.addEventListener('beforeunload', (e) => {
                 if (!this.submitting && this.content.trim() !== this.initial.trim() && !opts.draftKey) {
@@ -528,61 +607,652 @@ Alpine.data('composer', (opts) => ({
             });
         });
     },
-
-    /* --- Teg chiplari --- */
-    async loadTagSuggestions() {
-        const query = this.tagQuery.replace(/^#+/, '').trim();
-        try {
-            const res = await fetch(`${opts.tagsUrl}?${new URLSearchParams({ q: query })}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-            if (!res.ok) return;
-            const data = await res.json();
-            const taken = this.tags.map((t) => t.toLowerCase());
-            const items = data.tags.filter((t) => !taken.includes(t.name.toLowerCase())).map((t) => ({ key: t.slug, name: t.name, count: t.posts_count }));
-            if (data.can_create && query && TAG_NAME_RE.test(query.replace(/\s+/g, '_'))) {
-                items.unshift({ key: 'new', name: query.replace(/\s+/g, '_'), isNew: true });
-            }
-            this.tagSuggest = { open: items.length > 0 && document.activeElement === this.$refs.tagInput, items, index: 0 };
-        } catch {
-            /* e'tiborsiz */
-        }
-    },
-    addTag(raw) {
-        const name = String(raw ?? this.tagQuery).replace(/^#+/, '').trim().replace(/\s+/g, '_');
-        if (!name) return;
-        if (!TAG_NAME_RE.test(name)) {
-            toast('Teg faqat harf, raqam va _ belgisidan iborat bo‘lishi mumkin.', 'error');
-            return;
-        }
-        if (this.tags.length >= this.maxTags) {
-            toast(`Ko‘pi bilan ${this.maxTags} ta teg qo‘shish mumkin.`, 'error');
-            return;
-        }
-        if (!this.tags.some((t) => t.toLowerCase() === name.toLowerCase())) this.tags.push(name);
-        this.tagQuery = '';
-        this.tagSuggest.open = false;
-        this.$nextTick(() => this.$refs.tagInput?.focus());
-    },
-    removeTag(index) {
-        this.tags.splice(index, 1);
-    },
-    tagKeydown(event) {
-        const s = this.tagSuggest;
-        if (event.key === 'ArrowDown' && s.open) {
-            event.preventDefault();
-            s.index = (s.index + 1) % s.items.length;
-        } else if (event.key === 'ArrowUp' && s.open) {
-            event.preventDefault();
-            s.index = (s.index - 1 + s.items.length) % s.items.length;
-        } else if (event.key === 'Enter' || event.key === ',' || (event.key === ' ' && this.tagQuery.trim())) {
-            event.preventDefault();
-            this.addTag(s.open && s.items[s.index] && event.key === 'Enter' ? s.items[s.index].name : this.tagQuery);
-        } else if (event.key === 'Backspace' && !this.tagQuery && this.tags.length) {
-            this.tags.pop();
-        } else if (event.key === 'Escape') {
-            s.open = false;
-        }
-    },
 }));
+
+/* ---------- Maqola muharriri ---------- */
+/*
+ * Maqola = sarlavha + bloklar. Har bir matn bloki — o‘zi kattalashadigan textarea
+ * (contenteditable emas: mobil klaviaturalar, avtomatik tuzatish va nusxa-qo‘yishda ishonchli).
+ *   Enter — yangi paragraf, Shift+Enter — qator, Backspace boshida — oldingisi bilan qo‘shish;
+ *   "## " — sarlavha, "> " — iqtibos, "- " / "1. " — ro‘yxat, "---" — ajratgich;
+ *   Ctrl+B / Ctrl+I — qalin / kursiv; rasm — tugma, sudrab tashlash yoki Ctrl+V.
+ */
+const uid = () => Math.random().toString(36).slice(2, 10);
+const TEXT_BLOCKS = ['p', 'h', 'quote'];
+const MD_SHORTCUT = /^(#{1,3}|>|[-*•]|1[.)])\s/;
+
+/** Preview uchun: serverdagi ContentFormatter::toHtml($text, rich: true) bilan bir xil natija. */
+function richText(text) {
+    let html = escapeHtml(text.trim());
+    html = html.replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a class="link">${url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}</a>`);
+    html = html.replace(/(^|[^\p{L}\p{N}_@/])@([A-Za-z0-9_]{3,30})/gu, '$1<a class="mention">@$2</a>');
+    html = html.replace(new RegExp(`(^|[^\\p{L}\\p{N}_&/#;])#(${WORD}{2,50})`, 'gu'), '$1<a class="hashtag">#$2</a>');
+    html = html.replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/gu, '<strong>$1</strong>');
+    html = html.replace(/(?<![*\p{L}\p{N}])\*(?=[^\s*])([^*\n]*?[^\s*])\*(?![*\p{L}\p{N}])/gu, '<em>$1</em>');
+    return html.replace(/\n/g, '<br>');
+}
+
+function hydrateBlocks(blocks) {
+    return (Array.isArray(blocks) ? blocks : []).map((b) => {
+        if (b.type === 'list') return { id: uid(), type: 'list', ordered: !!b.ordered, items: (b.items?.length ? b.items : ['']).map((text) => ({ id: uid(), text: String(text) })) };
+        if (b.type === 'image') return { id: uid(), type: 'image', path: b.path, url: b.url, caption: b.caption ?? '', w: b.w ?? null, h: b.h ?? null, uploading: false, progress: 1 };
+        if (b.type === 'hr') return { id: uid(), type: 'hr' };
+        return { id: uid(), type: TEXT_BLOCKS.includes(b.type) ? b.type : 'p', text: String(b.text ?? '') };
+    });
+}
+
+Alpine.data('articleEditor', (opts) => {
+    // Forma elementi: o‘chirilgan blok ichidan chaqirilgan metodlarda $root aniqlanmaydi — shuning uchun oldindan saqlanadi.
+    let root = null;
+
+    return {
+        ...tagChips(opts),
+        title: opts.title ?? '',
+        blocks: hydrateBlocks(opts.blocks),
+        focused: 0,
+        focusedItem: null,
+        sel: { start: 0, end: 0 },
+        showPreview: false,
+        dragging: false,
+        restored: false,
+        submitting: false,
+        asDraft: false,
+        savedLabel: '',
+        kb: 0,
+        flash: null,
+        _initial: '',
+        _timers: {},
+
+        init() {
+            root = this.$root;
+            if (!this.blocks.length) this.blocks = [this.newBlock('p')];
+
+            if (opts.draftKey) {
+                const saved = draftStore.get(opts.draftKey);
+                if (saved && !this.hasContent && (saved.title?.trim() || saved.blocks?.length)) {
+                    this.title = saved.title ?? '';
+                    this.blocks = hydrateBlocks(saved.blocks);
+                    if (!this.blocks.length) this.blocks = [this.newBlock('p')];
+                    this.tags = Array.isArray(saved.tags) ? saved.tags : this.tags;
+                    this.restored = true;
+                }
+                this.$watch('title', () => this.scheduleSave());
+                this.$watch('blocks', () => this.scheduleSave());
+                this.$watch('tags', () => this.scheduleSave());
+            }
+
+            this._initial = this.serialized + this.title;
+            window.addEventListener('beforeunload', (e) => {
+                if (this.uploading || (!opts.draftKey && !this.submitting && this.serialized + this.title !== this._initial)) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            watchKeyboard((kb) => (this.kb = kb));
+
+            this.$nextTick(() => {
+                root.querySelectorAll('textarea[data-grow]').forEach((el) => this.grow(el));
+                if (!this.title.trim()) this.$refs.title?.focus();
+            });
+        },
+
+        /* --- Holat --- */
+        newBlock(type, extra = {}) {
+            if (type === 'list') return { id: uid(), type, ordered: false, items: [{ id: uid(), text: '' }], ...extra };
+            if (type === 'hr') return { id: uid(), type };
+            return { id: uid(), type, text: '', ...extra };
+        },
+        isText(b) {
+            return b && TEXT_BLOCKS.includes(b.type);
+        },
+        findBlock(id) {
+            return this.blocks.find((b) => b.id === id);
+        },
+        placeholder(b, i) {
+            if (b.type === 'h') return 'Kichik sarlavha';
+            if (b.type === 'quote') return 'Iqtibos yoki muhim fikr';
+            if (this.blocks.length === 1) return 'Yozishni boshlang… Rasm, kichik sarlavha va ro‘yxat — pastdagi paneldan.';
+            return i === this.focused ? 'Davom eting…' : '';
+        },
+        get clean() {
+            const out = [];
+            for (const b of this.blocks) {
+                if (this.isText(b) && b.text.trim()) out.push({ type: b.type, text: b.text.trim() });
+                else if (b.type === 'list') {
+                    const items = b.items.map((i) => i.text.trim()).filter(Boolean);
+                    if (items.length) out.push({ type: 'list', ordered: b.ordered, items });
+                } else if (b.type === 'image' && b.path) out.push({ type: 'image', path: b.path, url: b.url, caption: b.caption.trim(), w: b.w, h: b.h });
+                else if (b.type === 'hr') out.push({ type: 'hr' });
+            }
+            return out;
+        },
+        get serialized() {
+            return JSON.stringify(this.clean.map(({ url, ...b }) => b));
+        },
+        get bodyText() {
+            return this.clean
+                .map((b) => (b.type === 'list' ? b.items.join('\n') : b.type === 'image' ? b.caption : (b.text ?? '')))
+                .filter(Boolean)
+                .join('\n\n');
+        },
+        get hasContent() {
+            return this.clean.some((b) => b.type !== 'hr');
+        },
+        get chars() {
+            return [...`${this.title}\n\n${this.bodyText}`].length;
+        },
+        get words() {
+            return (`${this.title} ${this.bodyText}`.trim().match(/\S+/g) || []).length;
+        },
+        get readMinutes() {
+            return Math.max(1, Math.round(this.words / 200));
+        },
+        get uploading() {
+            return this.blocks.some((b) => b.type === 'image' && b.uploading);
+        },
+        get tooLong() {
+            return this.chars > opts.max;
+        },
+        get canSubmit() {
+            return this.title.trim().length >= 3 && this.hasContent && !this.uploading && !this.tooLong && !this.submitting;
+        },
+        get textTags() {
+            const found = [];
+            for (const m of this.bodyText.matchAll(TAG_RE)) {
+                if (!found.some((t) => t.toLowerCase() === m[2].toLowerCase())) found.push(m[2]);
+            }
+            return found.slice(0, 10);
+        },
+        get previewHtml() {
+            let html = '';
+            for (const b of this.clean) {
+                if (b.type === 'p') html += `<p>${richText(b.text)}</p>`;
+                else if (b.type === 'h') html += `<h2>${escapeHtml(b.text)}</h2>`;
+                else if (b.type === 'quote') html += `<blockquote><p>${richText(b.text)}</p></blockquote>`;
+                else if (b.type === 'list') {
+                    const tag = b.ordered ? 'ol' : 'ul';
+                    html += `<${tag}>${b.items.map((i) => `<li>${richText(i)}</li>`).join('')}</${tag}>`;
+                } else if (b.type === 'image') {
+                    html += `<figure><img src="${escapeHtml(b.url ?? '')}" alt="${escapeHtml(b.caption)}">${b.caption ? `<figcaption>${escapeHtml(b.caption)}</figcaption>` : ''}</figure>`;
+                } else if (b.type === 'hr') html += '<hr>';
+            }
+            return html || '<p class="text-muted">Matn yozilganda shu yerda ko‘rinadi.</p>';
+        },
+        get blockedReason() {
+            if (this.uploading) return 'Rasm yuklanmoqda…';
+            if (this.title.trim().length < 3) return 'Sarlavha yozing';
+            if (!this.hasContent) return 'Matn yozing';
+            if (this.tooLong) return `Maqola ${opts.max} belgidan oshmasin`;
+            return '';
+        },
+
+        /* --- Fokus va kursor --- */
+        el(i, j = null) {
+            return root.querySelector(j === null || j === undefined ? `[data-idx="${i}"]:not([data-item])` : `[data-idx="${i}"][data-item="${j}"]`);
+        },
+        focusAt(i, pos = 'end', j = null) {
+            this.$nextTick(() => {
+                const el = this.el(i, j);
+                if (!el) return;
+                el.focus({ preventScroll: false });
+                const p = pos === 'start' ? 0 : pos === 'end' ? el.value.length : Math.min(pos, el.value.length);
+                el.setSelectionRange(p, p);
+                this.grow(el);
+                this.focused = i;
+                this.focusedItem = j;
+                this.sel = { start: p, end: p };
+            });
+        },
+        focusNearest(i, pos, dir) {
+            for (let k = i; k >= 0 && k < this.blocks.length; k += dir) {
+                const b = this.blocks[k];
+                if (this.isText(b)) return this.focusAt(k, pos);
+                if (b.type === 'list') return this.focusAt(k, pos, pos === 'start' ? 0 : b.items.length - 1);
+            }
+            if (dir < 0) this.$refs.title?.focus();
+        },
+        track(event, i, j = null) {
+            this.focused = i;
+            this.focusedItem = j;
+            this.sel = { start: event.target.selectionStart ?? 0, end: event.target.selectionEnd ?? 0 };
+        },
+        grow(el) {
+            if (!el) return;
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+        },
+        titleKey(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.focusNearest(0, 'start', 1);
+            }
+        },
+
+        /* --- Matn bloklari: klaviatura --- */
+        hotkeys(event) {
+            if (!(event.ctrlKey || event.metaKey)) return false;
+            const key = event.key.toLowerCase();
+            if (key === 'b' || key === 'i') {
+                event.preventDefault();
+                this.track(event, this.focused, this.focusedItem);
+                this.wrap(key === 'b' ? '**' : '*');
+                return true;
+            }
+            if (key === 'enter') {
+                event.preventDefault();
+                this.publish();
+                return true;
+            }
+            return false;
+        },
+        onKey(event, i) {
+            if (this.hotkeys(event)) return;
+            const b = this.blocks[i];
+            const el = event.target;
+
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+                event.preventDefault();
+                if (b.type === 'p' && b.text.trim() === '---') {
+                    this.blocks.splice(i, 1, this.newBlock('hr'), this.newBlock('p'));
+                    return this.focusAt(i + 1, 'start');
+                }
+                if (b.type === 'quote' && !b.text.trim()) {
+                    b.type = 'p';
+                    return;
+                }
+                const before = b.text.slice(0, el.selectionStart);
+                const after = b.text.slice(el.selectionEnd);
+                b.text = before.replace(/\s+$/, '');
+                this.blocks.splice(i + 1, 0, this.newBlock('p', { text: after.replace(/^\s+/, '') }));
+                return this.focusAt(i + 1, 'start');
+            }
+
+            if (event.key === 'Backspace' && el.selectionStart === 0 && el.selectionEnd === 0) {
+                if (b.type !== 'p') {
+                    event.preventDefault();
+                    b.type = 'p';
+                    return this.$nextTick(() => this.grow(this.el(i)));
+                }
+                if (i === 0) {
+                    if (!b.text && this.blocks.length > 1) {
+                        event.preventDefault();
+                        this.blocks.splice(0, 1);
+                        this.focusNearest(0, 'start', 1);
+                    } else if (!b.text) {
+                        event.preventDefault();
+                        this.$refs.title?.focus();
+                    }
+                    return;
+                }
+                event.preventDefault();
+                const prev = this.blocks[i - 1];
+                if (this.isText(prev)) {
+                    const pos = prev.text.length;
+                    prev.text += b.text;
+                    this.blocks.splice(i, 1);
+                    return this.focusAt(i - 1, pos);
+                }
+                if (prev.type === 'list') {
+                    const last = prev.items[prev.items.length - 1];
+                    const pos = last.text.length;
+                    last.text += b.text;
+                    this.blocks.splice(i, 1);
+                    return this.focusAt(i - 1, pos, prev.items.length - 1);
+                }
+                if (!b.text) {
+                    this.blocks.splice(i, 1);
+                    return this.focusNearest(i - 1, 'end', -1);
+                }
+                return this.highlight(prev.id);
+            }
+
+            if (event.key === 'ArrowUp' && el.selectionStart === 0 && el.selectionEnd === 0 && i > 0) {
+                event.preventDefault();
+                return this.focusNearest(i - 1, 'end', -1);
+            }
+            if (event.key === 'ArrowDown' && el.selectionEnd === el.value.length && i < this.blocks.length - 1) {
+                event.preventDefault();
+                return this.focusNearest(i + 1, 'start', 1);
+            }
+        },
+        onInput(event, i) {
+            const b = this.blocks[i];
+            this.grow(event.target);
+            this.restored = false;
+            this.track(event, i);
+            if (b.type !== 'p') return;
+
+            // Markdown qisqartmalari: "## ", "> ", "- ", "1. "
+            const m = b.text.match(MD_SHORTCUT);
+            if (!m) return;
+            const rest = b.text.slice(m[0].length);
+            const el = event.target;
+            const caret = Math.max(0, el.selectionStart - m[0].length);
+            if (m[1].startsWith('#') || m[1] === '>') {
+                // Shu textarea'ning o‘zi qoladi — kursor darhol (keyingi tugma bosilishidan oldin) joyiga qo‘yiladi.
+                b.type = m[1] === '>' ? 'quote' : 'h';
+                b.text = rest;
+                el.value = rest;
+                el.setSelectionRange(caret, caret);
+                this.sel = { start: caret, end: caret };
+                return;
+            }
+            this.blocks.splice(i, 1, { id: uid(), type: 'list', ordered: /\d/.test(m[1]), items: [{ id: uid(), text: rest }] });
+            this.focusAt(i, caret, 0);
+        },
+        onPaste(event, i, j = null) {
+            const data = event.clipboardData;
+            const files = [...(data?.files ?? [])].filter((f) => f.type.startsWith('image/'));
+            if (files.length) {
+                event.preventDefault();
+                files.slice(0, 10).forEach((f, n) => this.upload(f, i + n));
+                return;
+            }
+            // Bir necha paragrafli matn — har biri alohida blok bo‘lib qo‘yiladi.
+            const text = (data?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n');
+            if (j !== null || !/\n\s*\n/.test(text)) return;
+            event.preventDefault();
+            const b = this.blocks[i];
+            const el = event.target;
+            const before = b.text.slice(0, el.selectionStart);
+            const after = b.text.slice(el.selectionEnd);
+            const parts = text.split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
+            if (!parts.length) return;
+            b.text = before + parts[0];
+            const rest = parts.slice(1).map((t) => this.newBlock('p', { text: t }));
+            const lastIndex = i + rest.length;
+            if (rest.length) {
+                rest[rest.length - 1].text += after;
+                this.blocks.splice(i + 1, 0, ...rest);
+                this.focusAt(lastIndex, rest[rest.length - 1].text.length - after.length);
+            } else {
+                b.text += after;
+                this.focusAt(i, b.text.length - after.length);
+            }
+            this.$nextTick(() => root.querySelectorAll('textarea[data-grow]').forEach((t) => this.grow(t)));
+        },
+
+        /* --- Ro‘yxat bandlari --- */
+        onItemKey(event, i, j) {
+            if (this.hotkeys(event)) return;
+            const b = this.blocks[i];
+            const item = b.items[j];
+            const el = event.target;
+
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+                event.preventDefault();
+                if (!item.text.trim()) {
+                    // Bo‘sh band + Enter — ro‘yxatdan chiqish.
+                    b.items.splice(j, 1);
+                    const tail = b.items.splice(j);
+                    const insert = [this.newBlock('p')];
+                    if (tail.length) insert.push({ id: uid(), type: 'list', ordered: b.ordered, items: tail });
+                    if (!b.items.length) {
+                        this.blocks.splice(i, 1, ...insert);
+                        return this.focusAt(i, 'start');
+                    }
+                    this.blocks.splice(i + 1, 0, ...insert);
+                    return this.focusAt(i + 1, 'start');
+                }
+                const before = item.text.slice(0, el.selectionStart);
+                const after = item.text.slice(el.selectionEnd);
+                item.text = before;
+                b.items.splice(j + 1, 0, { id: uid(), text: after });
+                return this.focusAt(i, 'start', j + 1);
+            }
+
+            if (event.key === 'Backspace' && el.selectionStart === 0 && el.selectionEnd === 0) {
+                event.preventDefault();
+                if (j > 0) {
+                    const prev = b.items[j - 1];
+                    const pos = prev.text.length;
+                    prev.text += item.text;
+                    b.items.splice(j, 1);
+                    return this.focusAt(i, pos, j - 1);
+                }
+                // Birinchi band — oddiy paragrafga aylanadi.
+                b.items.splice(0, 1);
+                const p = this.newBlock('p', { text: item.text });
+                if (b.items.length) this.blocks.splice(i, 0, p);
+                else this.blocks.splice(i, 1, p);
+                return this.focusAt(i, 'start');
+            }
+
+            if (event.key === 'ArrowUp' && el.selectionStart === 0) {
+                event.preventDefault();
+                return j > 0 ? this.focusAt(i, 'end', j - 1) : this.focusNearest(i - 1, 'end', -1);
+            }
+            if (event.key === 'ArrowDown' && el.selectionEnd === el.value.length) {
+                event.preventDefault();
+                return j < b.items.length - 1 ? this.focusAt(i, 'start', j + 1) : this.focusNearest(i + 1, 'start', 1);
+            }
+        },
+
+        /* --- Asboblar paneli --- */
+        current() {
+            return this.blocks[Math.min(this.focused, this.blocks.length - 1)];
+        },
+        isActive(type, ordered = null) {
+            const b = this.current();
+            if (!b || b.type !== type) return false;
+            return ordered === null || b.ordered === ordered;
+        },
+        setType(type) {
+            const i = Math.min(this.focused, this.blocks.length - 1);
+            const b = this.blocks[i];
+            if (this.isText(b)) {
+                b.type = b.type === type ? 'p' : type;
+                return this.focusAt(i, this.sel.start);
+            }
+            if (b?.type === 'list') {
+                const parts = b.items.map((it) => this.newBlock(type, { text: it.text }));
+                this.blocks.splice(i, 1, ...parts);
+                return this.focusAt(i + parts.length - 1, 'end');
+            }
+            const at = this.insertAfter(i, this.newBlock(type));
+            this.focusAt(at, 'start');
+        },
+        setList(ordered) {
+            const i = Math.min(this.focused, this.blocks.length - 1);
+            const b = this.blocks[i];
+            if (b?.type === 'list') {
+                if (b.ordered === ordered) {
+                    const parts = b.items.map((it) => this.newBlock('p', { text: it.text }));
+                    this.blocks.splice(i, 1, ...parts);
+                    return this.focusAt(i, 'end');
+                }
+                b.ordered = ordered;
+                return this.focusAt(i, 'end', this.focusedItem ?? b.items.length - 1);
+            }
+            if (this.isText(b)) {
+                const lines = b.text.split('\n');
+                this.blocks.splice(i, 1, { id: uid(), type: 'list', ordered, items: lines.map((text) => ({ id: uid(), text })) });
+                return this.focusAt(i, 'end', lines.length - 1);
+            }
+            const at = this.insertAfter(i, { id: uid(), type: 'list', ordered, items: [{ id: uid(), text: '' }] });
+            this.focusAt(at, 'start', 0);
+        },
+        insertHr() {
+            const at = this.insertAfter(Math.min(this.focused, this.blocks.length - 1), this.newBlock('hr'));
+            this.focusNearest(at + 1, 'start', 1);
+        },
+        /** Joriy blokdan keyin qo‘yadi; joriy blok bo‘sh paragraf bo‘lsa — o‘rniga. Qo‘yilgan indeksni qaytaradi. */
+        insertAfter(i, block) {
+            const cur = this.blocks[i];
+            let at;
+            if (cur && cur.type === 'p' && !cur.text.trim()) {
+                this.blocks.splice(i, 1, block);
+                at = i;
+            } else {
+                this.blocks.splice(i + 1, 0, block);
+                at = i + 1;
+            }
+            // Oxirida rasm yoki ajratgich qolsa — yozishni davom ettirish uchun bo‘sh paragraf.
+            const last = this.blocks[this.blocks.length - 1];
+            if (!this.isText(last) && last.type !== 'list') this.blocks.push(this.newBlock('p'));
+            this.focused = at;
+            return at;
+        },
+        moveBlock(i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= this.blocks.length) return;
+            const [b] = this.blocks.splice(i, 1);
+            this.blocks.splice(j, 0, b);
+            this.highlight(b.id);
+        },
+        removeBlock(i) {
+            this.blocks.splice(i, 1);
+            if (!this.blocks.length) this.blocks.push(this.newBlock('p'));
+            this.focusNearest(Math.max(0, i - 1), 'end', i > 0 ? -1 : 1);
+        },
+        highlight(id) {
+            this.flash = id;
+            clearTimeout(this._timers.flash);
+            this._timers.flash = setTimeout(() => (this.flash = null), 900);
+        },
+        /** Qalin / kursiv: belgilangan matn (yoki kursor turgan so‘z) ** yoki * bilan o‘raladi; qayta bosilsa — olib tashlanadi. */
+        wrap(mark) {
+            const i = this.focused;
+            const j = this.focusedItem;
+            const b = this.blocks[i];
+            const target = j === null || j === undefined ? b : b?.items?.[j];
+            if (!target || typeof target.text !== 'string') return;
+            const t = target.text;
+            let { start, end } = this.sel;
+            const n = mark.length;
+
+            if (t.slice(start - n, start) === mark && t.slice(end, end + n) === mark) {
+                target.text = t.slice(0, start - n) + t.slice(start, end) + t.slice(end + n);
+                return this.selectRange(i, j, start - n, end - n);
+            }
+            if (start === end) {
+                const left = t.slice(0, start).match(/[\p{L}\p{N}_‘’ʻʼ']*$/u)[0].length;
+                const right = t.slice(end).match(/^[\p{L}\p{N}_‘’ʻʼ']*/u)[0].length;
+                start -= left;
+                end += right;
+            }
+            target.text = t.slice(0, start) + mark + t.slice(start, end) + mark + t.slice(end);
+            this.selectRange(i, j, start + n, end + n);
+        },
+        selectRange(i, j, start, end) {
+            this.$nextTick(() => {
+                const el = this.el(i, j);
+                if (!el) return;
+                el.focus();
+                el.setSelectionRange(start, end);
+                this.sel = { start, end };
+            });
+        },
+
+        /* --- Rasmlar --- */
+        pickImages(event) {
+            [...event.target.files].slice(0, 10).forEach((f, n) => this.upload(f, Math.min(this.focused, this.blocks.length - 1) + n));
+            event.target.value = '';
+        },
+        drop(event) {
+            this.dragging = false;
+            const files = [...(event.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith('image/'));
+            files.slice(0, 10).forEach((f, n) => this.upload(f, Math.min(this.focused, this.blocks.length - 1) + n));
+        },
+        upload(file, after) {
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                return toast('Faqat JPG, PNG yoki WEBP rasm qo‘shish mumkin.', 'error');
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                return toast('Rasm 5 MB dan oshmasligi kerak.', 'error');
+            }
+            const id = uid();
+            const at = this.insertAfter(after, { id, type: 'image', path: null, url: URL.createObjectURL(file), caption: '', w: null, h: null, uploading: true, progress: 0 });
+            // Rasmdan keyin yozishni davom ettirish mumkin bo‘lsin.
+            this.focusNearest(at + 1, 'start', 1);
+
+            const fail = (message) => {
+                const index = this.blocks.findIndex((b) => b.id === id);
+                if (index !== -1) this.blocks.splice(index, 1);
+                toast(message, 'error');
+            };
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', opts.uploadUrl);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+            xhr.upload.onprogress = (e) => {
+                const b = this.findBlock(id);
+                if (b && e.lengthComputable) b.progress = e.loaded / e.total;
+            };
+            xhr.onload = () => {
+                let data = {};
+                try {
+                    data = JSON.parse(xhr.responseText);
+                } catch {
+                    /* JSON emas */
+                }
+                if (xhr.status === 201) {
+                    const b = this.findBlock(id);
+                    if (b) Object.assign(b, { path: data.path, url: data.url, w: data.width, h: data.height, uploading: false, progress: 1 });
+                } else if (xhr.status === 429) {
+                    fail('Juda ko‘p rasm yuklandi. Birozdan keyin urinib ko‘ring.');
+                } else if (xhr.status === 419) {
+                    fail('Sessiya eskirgan — sahifani yangilang (matn saqlanib qoladi).');
+                } else {
+                    fail(data.errors?.image?.[0] ?? data.message ?? 'Rasmni yuklab bo‘lmadi.');
+                }
+            };
+            xhr.onerror = () => fail('Internet aloqasini tekshiring — rasm yuklanmadi.');
+            const form = new FormData();
+            form.append('image', file);
+            xhr.send(form);
+        },
+
+        /* --- Qoralama, ko‘rish, yuborish --- */
+        scheduleSave() {
+            clearTimeout(this._timers.save);
+            this._timers.save = setTimeout(() => {
+                if (this.submitting) return;
+                if (this.title.trim() || this.hasContent) {
+                    draftStore.set(opts.draftKey, { title: this.title, blocks: this.clean, tags: this.tags, at: Date.now() });
+                    this.savedLabel = 'Qoralama saqlandi';
+                } else {
+                    draftStore.remove(opts.draftKey);
+                    this.savedLabel = '';
+                }
+            }, 800);
+        },
+        discardDraft() {
+            draftStore.remove(opts.draftKey);
+            this.title = '';
+            this.blocks = [this.newBlock('p')];
+            this.tags = [];
+            this.restored = false;
+            this.savedLabel = '';
+            this.$nextTick(() => this.$refs.title?.focus());
+        },
+        togglePreview() {
+            this.showPreview = !this.showPreview;
+            window.scrollTo({ top: 0 });
+        },
+        publish() {
+            this.asDraft = false;
+            this.$nextTick(() => root.requestSubmit());
+        },
+        saveDraft() {
+            this.asDraft = true;
+            this.$nextTick(() => root.requestSubmit());
+        },
+        onSubmit(event) {
+            // Qoralama uchun sarlavha yetarli; chop etish uchun — sarlavha va matn.
+            const ok = this.asDraft ? this.title.trim().length >= 3 && this.hasContent && !this.uploading : this.canSubmit;
+            if (!ok || this.submitting) {
+                event.preventDefault();
+                if (this.blockedReason) toast(this.blockedReason, 'error');
+                return;
+            }
+            this.submitting = true;
+            if (opts.draftKey) draftStore.remove(opts.draftKey);
+        },
+    };
+});
 
 /* ---------- Izohlar ---------- */
 Alpine.data('comments', ({ url }) => ({
@@ -686,132 +1356,15 @@ window.sharePost = async (url, text) => {
     toast('Havola nusxalandi.', 'success');
 };
 
-/* ---------- Kategoriyaga obuna ---------- */
-/* ---------- Post oynasi: lentadan postga o‘tish va qaytish ---------- */
-/*
- * Lentadagi post bosilganda sahifa almashmaydi — post lenta ustida ochiladi (URL o‘zgaradi,
- * havolani ulashish mumkin). "Orqaga" yoki Esc — lentaga aynan o‘sha joyga qaytadi:
- * yuklangan postlar, scroll holati, yozilayotgan matn — hammasi joyida qoladi.
- * Ctrl/Cmd+bosish yoki o‘rta tugma — odatdagidek yangi tabda ochiladi.
- */
-Alpine.data('postViewer', () => ({
-    open: false,
-    url: null,
-    loading: false,
-    failed: false,
-    pageTitle: document.title,
-    returnTo: null,
-    controller: null,
-
-    init() {
-        document.addEventListener('click', (e) => this.intercept(e));
-        window.addEventListener('popstate', (e) => {
-            if (e.state?.fikrlashPost) this.show(e.state.fikrlashPost, { push: false });
-            else if (this.open) this.hide();
-        });
-    },
-
-    intercept(e) {
-        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        let url = null;
-        const link = e.target.closest('a[data-post-link]');
-        if (link) {
-            url = link.href;
-        } else {
-            const area = e.target.closest('[data-post-open]');
-            // Matn ichidagi havola/tugma o‘zi ishlasin; matn belgilanayotgan bo‘lsa — ochmaymiz.
-            if (!area || e.target.closest('a, button, input, textarea, label')) return;
-            if (String(window.getSelection?.() ?? '').trim()) return;
-            url = area.dataset.postOpen;
-        }
-        if (!url || new URL(url, location.href).origin !== location.origin) return;
-        e.preventDefault();
-        this.show(url, { from: e.target.closest('article') });
-    },
-
-    async show(url, { push = true, from = null } = {}) {
-        if (!this.open) {
-            this.pageTitle = document.title;
-            this.returnTo = from;
-        }
-        if (push) history.pushState({ fikrlashPost: url }, '', url);
-        this.url = url;
-        this.open = true;
-        this.failed = false;
-        this.loading = true;
-        this.$refs.body.innerHTML = '';
-        this.$refs.scroller.scrollTop = 0;
-
-        this.controller?.abort();
-        const controller = (this.controller = new AbortController());
-        try {
-            const res = await fetch(url.split('#')[0], {
-                headers: { 'X-Fragment': 'post', 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
-                credentials: 'same-origin',
-                cache: 'no-store',
-                signal: controller.signal,
-            });
-            if (!res.ok) throw new Error(String(res.status));
-            this.$refs.body.innerHTML = await res.text();
-            const title = this.$refs.body.firstElementChild?.dataset.title;
-            if (title) document.title = title;
-            initViewTracking(this.$refs.body);
-            this.$nextTick(() => {
-                if (url.includes('#comments')) window.focusComment(Number(url.match(/posts\/(\d+)/)?.[1]));
-                else this.$refs.close.focus({ preventScroll: true });
-            });
-        } catch (e) {
-            if (e.name === 'AbortError') return;
-            this.failed = true;
-        } finally {
-            if (this.controller === controller) this.loading = false;
-        }
-    },
-
-    close() {
-        if (history.state?.fikrlashPost) history.back();
-        else this.hide();
-    },
-
-    hide() {
-        this.controller?.abort();
-        this.open = false;
-        document.title = this.pageTitle;
-        // Oyna yopilgach ichidagi komponentlar (o‘qish vaqti va h.k.) to‘g‘ri yakunlansin.
-        setTimeout(() => {
-            if (!this.open) this.$refs.body.innerHTML = '';
-        }, 200);
-        const card = this.returnTo;
-        this.returnTo = null;
-        if (card?.isConnected) {
-            card.focus({ preventScroll: true });
-            card.classList.remove('flash');
-            void card.offsetWidth;
-            card.classList.add('flash');
-        }
-    },
-}));
-
+/* ---------- Navigatsiya yordamchilari (asosiysi — navigation.js) ---------- */
 /** Lentada turib "Lenta"/logo bosilsa — sahifa qayta yuklanmaydi, yuqoriga silliq qaytadi. */
 document.addEventListener('click', (e) => {
     const link = e.target.closest('a[data-home-link]');
     if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    if (location.pathname !== '/' || history.state?.fikrlashPost) return;
+    if (location.pathname !== '/') return;
     e.preventDefault();
     window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 });
-
-/** "Orqaga": sayt ichidan kelgan bo‘lsa — tarixda orqaga (lenta o‘sha joyidan davom etadi), aks holda zaxira sahifaga. */
-window.backOr = (fallback) => {
-    let internal = false;
-    try {
-        internal = document.referrer && new URL(document.referrer).origin === location.origin;
-    } catch {
-        internal = false;
-    }
-    if (internal && history.length > 1) history.back();
-    else location.href = fallback;
-};
 
 /** Izoh maydoniga o‘tish (izoh tugmasi bosilganda). Mehmon uchun — izohlar bo‘limiga. */
 window.focusComment = (postId) => {
@@ -975,4 +1528,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (flash) toast(flash, 'success');
 });
 
-Alpine.start();
+// Orqaga qaytilganda lenta holati Alpine'dan oldin tiklanadi, so‘ng o‘sha joyga aylantiriladi.
+captureFeed()
+    .catch(() => {})
+    .finally(() => {
+        Alpine.start();
+        restoreFeedPosition();
+    });

@@ -1,4 +1,5 @@
 @extends('layouts.auth')
+@section('focus', '1')
 @section('title', 'Telefonni tasdiqlash')
 
 @section('content')

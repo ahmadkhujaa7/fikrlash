@@ -16,8 +16,16 @@ class PostResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'type' => $this->type,
+            'title' => $this->when($this->isArticle(), $this->title),
+            // Maqola bloklari: rasm yo‘li o‘rniga to‘liq URL.
+            'blocks' => $this->when($this->isArticle(), fn () => array_map(
+                fn (array $b) => $b['type'] === 'image' ? ['type' => 'image', 'url' => Post::mediaUrl($b['path']), 'caption' => $b['caption'] ?? '', 'width' => $b['w'] ?? null, 'height' => $b['h'] ?? null] : $b,
+                $this->blocks ?? [],
+            )),
+            'read_minutes' => $this->when($this->isArticle(), fn () => $this->readMinutes()),
             'content' => $this->content,
-            'content_html' => ContentFormatter::toHtml($this->content),
+            'content_html' => $this->isArticle() ? null : ContentFormatter::toHtml($this->content),
             'image_url' => $this->imageUrl(),
             'status' => $this->status->value,
             'visibility' => $this->visibility->value,

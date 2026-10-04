@@ -10,6 +10,7 @@
     use Illuminate\Support\Number;
 
     $detail = $detail ?? false;
+    $isArticle = $post->isArticle();
     $me = auth()->user();
     $author = $post->user;
     $url = route('posts.show', $post);
@@ -30,7 +31,12 @@
     @endif
     <div @if ($canDismiss) x-show="!dismissed" @endif>
 
-    <header class="flex items-center gap-3">
+    @if ($detail && $isArticle)
+        <p class="article-kicker">Maqola · {{ $post->readMinutes() }} daqiqalik o‘qish</p>
+        <h1 class="article-title mt-3">{{ $post->title }}</h1>
+    @endif
+
+    <header class="flex items-center gap-3 {{ $detail && $isArticle ? 'mt-6' : '' }}">
         <a href="{{ $author->profileUrl() }}" class="shrink-0" tabindex="-1" aria-hidden="true">
             <x-avatar :user="$author" :size="$detail ? 'md' : 'sm'" />
         </a>
@@ -42,9 +48,9 @@
                 <a href="{{ $url }}" data-post-link class="meta shrink-0 hover:text-ink">
                     <time datetime="{{ $time->toIso8601String() }}" title="{{ Time::full($time) }}">{{ Time::short($time) }}</time>
                 </a>
-                @if ($post->isLong())
+                @if ($post->isLong() && ! $isArticle)
                     {{-- Uzun post: taxminiy o‘qish vaqti --}}
-                    <span class="meta hidden shrink-0 sm:inline">{{ max(1, (int) round(str_word_count(\Illuminate\Support\Str::ascii($post->content)) / 180)) }} daqiqalik o‘qish</span>
+                    <span class="meta hidden shrink-0 sm:inline">{{ $post->readMinutes() }} daqiqalik o‘qish</span>
                 @endif
             @endif
         </div>
@@ -81,7 +87,25 @@
         </div>
     @endif
 
-    @if ($detail)
+    @if ($isArticle && $detail)
+        <div class="mt-8">@include('partials.article-body')</div>
+    @elseif ($isArticle)
+        {{-- Maqola lentada: muqova, sarlavha, qisqa mazmun --}}
+        <a href="{{ $url }}" data-post-link class="group mt-3.5 block">
+            @if ($post->image_path)
+                <div class="mb-4 aspect-[16/9] overflow-hidden rounded-2xl bg-sunken">
+                    <img src="{{ $post->imageUrl() }}" alt="" loading="lazy" decoding="async" class="size-full object-cover transition-transform duration-500 group-hover:scale-[1.02]">
+                </div>
+            @endif
+            <h2 class="font-serif text-[1.45rem] font-semibold leading-[1.2] tracking-[-0.015em] text-ink transition-colors group-hover:text-lapis-deep sm:text-[1.6rem]">{{ $post->title }}</h2>
+            @if ($summary = $post->summary(260))
+                <p class="mt-2 line-clamp-3 font-serif text-[1.0625rem] leading-relaxed text-ink-soft">{{ $summary }}</p>
+            @endif
+            <p class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-lapis-soft px-2.5 py-1 text-[12px] font-medium text-lapis">
+                <x-ico name="newspaper" size="size-3.5" /> Maqola · {{ $post->readMinutes() }} daqiqalik o‘qish
+            </p>
+        </a>
+    @elseif ($detail)
         <div class="prose-post mt-6 !text-[1.375rem] !leading-[1.62]">{!! ContentFormatter::toHtml($post->content) !!}</div>
     @elseif ($post->isLong())
         <div class="prose-post mt-3" x-data="{ more: false }">
@@ -92,7 +116,7 @@
         <div class="prose-post mt-3 cursor-pointer" data-post-open="{{ $url }}">{!! ContentFormatter::toHtml($post->content) !!}</div>
     @endif
 
-    @if ($post->image_path)
+    @if ($post->image_path && ! $isArticle)
         <a href="{{ $detail ? $post->imageUrl() : $url }}" class="mt-5 block overflow-hidden rounded-2xl bg-sunken" @if ($detail) target="_blank" rel="noopener" @else data-post-link @endif>
             <img src="{{ $post->imageUrl() }}" alt="Post rasmi" loading="lazy" class="{{ $detail ? 'w-full' : 'max-h-[28rem] w-full object-cover' }}">
         </a>

@@ -5,7 +5,7 @@
     @foreach ($steps as $n => $label)
         <li class="flex items-center gap-2 {{ $n === $current ? 'font-medium text-ink' : 'text-muted' }}" @if ($n === $current) aria-current="step" @endif>
             <span class="grid size-6 place-items-center rounded-full text-[12px] font-semibold
-                {{ $n < $current ? 'bg-lapis text-white' : ($n === $current ? 'bg-ink text-on-ink' : 'border border-line-strong text-muted') }}">
+                {{ $n < $current ? 'bg-lapis-soft text-lapis' : ($n === $current ? 'bg-lapis text-white' : 'border border-line-strong text-muted') }}">
                 @if ($n < $current)
                     <x-ico name="check" size="size-3.5" />
                 @else

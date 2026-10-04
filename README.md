@@ -164,7 +164,7 @@ O‘zgartirishlar faqat migratsiya orqali: `php artisan make:migration ...` → 
 
 ## 5. Autentifikatsiya va OTP
 
-- **Ro‘yxatdan o‘tish:** ism, username, telefon, parol → SMS kod → tasdiqlangach akkaunt yaratiladi.
+- **Ro‘yxatdan o‘tish (2 bosqich):** 1) ism, username, telefon, parol — yozish bilan tekshiriladi (username bandmi, raqam ro‘yxatdan o‘tganmi: `/register/check`), username ismdan avtomatik taklif qilinadi, parol kuchi ko‘rsatiladi; 2) telefonga kelgan 6 xonali kod (6 katak, nusxa qo‘yish va SMS'dan avtomatik to‘ldirish, “Raqamni o‘zgartirish” — 1-bosqichga ma'lumotlar bilan qaytadi). Akkaunt kod tasdiqlangandan keyin yaratiladi. Lokal rejimda (`SMS_DRIVER=log`) kod navbatsiz yuboriladi va tasdiqlash sahifasida “Sinov rejimi” yozuvida ko‘rinadi (productionda hech qachon).
 - **Kirish:** telefon *yoki* username + parol. Xato xabari doim bir xil (qaysi qismi noto‘g‘ri ekani aytilmaydi).
 - **Parolni tiklash:** telefon → SMS kod → yangi parol. Barcha sessiya va API tokenlar bekor qilinadi.
 - **OTP himoyasi:** 6 xonali, 5 daqiqa amal qiladi, 5 urinish (atomik hisob), 60s qayta yuborish cooldown, telefon bo‘yicha kuniga 8 ta, IP bo‘yicha 30 ta SMS, bir kod bir marta.
@@ -384,19 +384,32 @@ Mavzular (kategoriyalar) faqat tizim ichida ishlatiladi: AI har bir postga mavzu
 - **Tasdiqlangan belgisi** (`users.verified_at`, `verified_by`): admin panelda foydalanuvchi qatoridagi “Tasdiqlash” amali yoki bir nechtasini birdan (bulk). Belgi lentada, post va izohlarda, profilda, qidiruv va takliflarda, bildirishnomalarda, API'da (`is_verified`) ko‘rinadi. Tasdiqlangan mualliflar qidiruvda birinchi va tavsiyada kichik ustunlikka ega. Har bir o‘zgarish audit log'ga yoziladi, foydalanuvchiga bildirishnoma boradi. Ismga ✓ kabi belgilar yozib soxtalashtirib bo‘lmaydi.
 - **Admin foydalanuvchi yaratadi:** Foydalanuvchilar → “Yangi”. Telefon, parol, rol, holat va tasdiq belgisi bir formada; telefon tasdiqlangan hisoblanadi.
 - **Teglar:** foydalanuvchi matnda `#so‘z` yozadi yoki “+ Teg qo‘shish” maydonidan mavjud tegni tanlaydi / yangisini yaratadi (ko‘pi bilan 5 ta). `#` va `@` yozilganda takliflar chiqadi (`/compose/tags`, `/compose/users`). AI teg qo‘shmaydi — teglar faqat foydalanuvchining o‘zidan.
-- **Yozish sahifasi:** qoralama brauzerda avtomatik saqlanadi, rasmni sudrab tashlash va Ctrl+V, “Ko‘rinishi” (oldindan ko‘rish), so‘z soni va o‘qish vaqti, belgilar halqasi, Ctrl+Enter.
+- **Yozish sahifasi:** “Fikr” yoki “Maqola” (pastda — “Maqolalar”). Qoralama brauzerda avtomatik saqlanadi, rasmni sudrab tashlash va Ctrl+V, “Ko‘rinishi” (oldindan ko‘rish), so‘z soni va o‘qish vaqti, belgilar halqasi, Ctrl+Enter.
 - **Brending:** Tizim sozlamalari → Brending: sayt nomi, logo (yorug‘ va tungi rejim uchun), favicon. Logo yuklanmasa — standart “fikrlash.” so‘z belgisi. Fayllar `storage/app/public/branding` da (`php artisan storage:link` kerak).
 - **Kun savoli:** Tizim sozlamalari → Bosh sahifa. Lenta tepasida chiqadi va yozishga undaydi.
 
-### Lentadan postga o‘tish
+### Lentadan postga o‘tish (mobil ilovadagidek)
 
-Lentadagi post bosilganda sahifa almashmaydi: post lenta ustidagi oynada ochiladi (URL `/posts/{id}` ga o‘zgaradi — ulashish mumkin; serverdan `X-Fragment: post` bilan faqat post bo‘lagi olinadi). “Orqaga”, Esc yoki brauzerning orqaga tugmasi lentaga aynan o‘sha joyga qaytaradi — yuklangan postlar, scroll va yozilayotgan matn saqlanadi, kelgan post bir lahza belgilanadi. Oynada qo‘yilgan like/saqlash va izohlar soni lentadagi kartochkada ham darhol yangilanadi. Lentada turib “Lenta”/logo bosilsa — yuqoriga silliq qaytadi.
+Post alohida sahifada ochiladi (`/posts/{id}`): havolani ulashish, yangilash va “orqaga” tabiiy ishlaydi. O‘tish animatsiyasi — brauzerning View Transitions API'si: postga kirishda sahifa o‘ngdan suriladi, orqaga — teskari, pastki menyu bo‘limlari orasida yumshoq almashinadi (kompyuterda — yengil siljish; “harakatni kamaytirish” yoqilgan bo‘lsa — animatsiyasiz). Orqaga qaytilganda lenta aynan o‘sha joyidan davom etadi: avvalo brauzer keshi (bfcache), u bo‘lmasa — yuklangan sahifalar (gzip bilan siqilgan) va ochilgan post `sessionStorage` dan tiklanadi, kelgan post bir lahza belgilanadi (`resources/js/navigation.js`). Lentada turib “Lenta”/logo bosilsa — yuqoriga silliq qaytadi.
+
+### Mobil ilova ko‘rinishi va o‘rnatish (PWA)
+
+- Pastki menyu: Lenta, Qidiruv, Yozish, Faollik (bildirishnomalar soni bilan), Profil. Yuqori panel pastga aylantirganda yashirinadi.
+- Post va yozish sahifalarida o‘z ilova paneli (orqaga, sarlavha, amallar); xavfsiz hududlar (notch, “home” chizig‘i) hisobga olingan.
+- `/manifest.webmanifest` + `public/icons/*`: telefonda “Bosh ekranga qo‘shish” — sayt alohida ilova kabi, brauzer panelisiz ochiladi (Yozish, Maqola, Qidiruv yorliqlari bilan).
+
+### Maqolalar
+
+“Yozish” sahifasida ikki tur: **Fikr** (qisqa matn + rasm) va **Maqola** (`/compose?type=article`). Maqola — sarlavha va bloklar: paragraf, kichik sarlavha, matn orasidagi rasmlar (izohi bilan), iqtibos, ro‘yxat (oddiy/raqamli), ajratgich; **qalin** va *kursiv*.
+- Muharrir mobil uchun: asboblar paneli klaviatura ustida turadi; Enter — yangi paragraf, `## `/`> `/`- `/`1. `/`---` qisqartmalari, Ctrl+B/I, rasmni tanlash/sudrab tashlash/Ctrl+V (yuklanish jarayoni ko‘rinadi), rasmni surish va o‘chirish, ko‘p paragrafli matnni qo‘yganda bloklarga bo‘linadi, “Ko‘rinishi”, avtomatik qoralama (brauzerda) va serverdagi qoralama.
+- Rasmlar darhol `POST /compose/images` ga yuklanadi (EXIF o‘chadi, WebP, o‘lchami saqlanadi) va `media_uploads` da muallifga yoziladi; post saqlanganda biriktiriladi. Server bloklarni qayta tekshiradi: faqat muallifning o‘z rasmlari, uzunlik chegaralari (`config/fikrlash.php → articles`). Tahrirda olib tashlangan rasmlar fayli bilan o‘chadi; hech qachon saqlanmagan rasmlar 7 kundan keyin `fikrlash:prune` bilan tozalanadi.
+- `posts.content` — sarlavha va bloklardan yig‘ilgan oddiy matn: qidiruv, AI tahlili, `#teg` va `@eslatma` maqolada ham ishlaydi. Lentada maqola muqova (birinchi rasm), sarlavha, qisqa mazmun va o‘qish vaqti bilan ko‘rinadi. API: `type`, `title`, `blocks`, `read_minutes`.
 
 ### Qidiruv
 
 Qidiruv real vaqtda ishlaydi: foydalanuvchi yozishni to‘xtatgach (250 ms) natijalar orqa fonda yangilanadi, sahifa qayta yuklanmaydi va URL o‘zgaradi (`/search/live`). Sarlavhadagi qidiruv maydoni yozish bilan odamlar, teglar va fikrlar bo‘yicha tezkor takliflarni ko‘rsatadi (`/search/suggest`, ↑/↓ bilan tanlash, Esc — yopish, Enter — to‘liq natijalar). Eski so‘rovlar bekor qilinadi (AbortController), limit — daqiqasiga 150 so‘rov.
 
-**MVP (tayyor):** autentifikatsiya + SMS OTP, profil, postlar (matn + rasm; mavzu va teglarni AI aniqlaydi), izoh va javoblar, like, saqlash, obuna, o‘rganuvchi shaxsiy lenta, qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, xatti-harakatdan o‘rganadigan tavsiyalar ("Qiziq emas", kashfiyot), o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
+**MVP (tayyor):** autentifikatsiya + SMS OTP (2 bosqichli ro‘yxatdan o‘tish), profil, postlar va maqolalar (matn orasida rasmlar, bo‘limlar; mavzuni AI aniqlaydi, teglarni muallif qo‘yadi), izoh va javoblar, like, saqlash, obuna, o‘rganuvchi shaxsiy lenta, qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, xatti-harakatdan o‘rganadigan tavsiyalar ("Qiziq emas", kashfiyot), o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
 
 **V2:** real-time bildirishnomalar (Laravel Reverb), Horizon, Meilisearch (Laravel Scout), kirill ↔ lotin qidiruv, haftalik dayjest, foydalanuvchini bloklash/mute, admin 2FA, rasmlar uchun CDN va bir nechta o‘lcham.
 

@@ -114,6 +114,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('views', fn (Request $r) => Limit::perMinute(120)->by('views:'.$by($r)));
         RateLimiter::for('reports', fn (Request $r) => Limit::perHour(20)->by('reports:'.$by($r)));
         RateLimiter::for('uploads', fn (Request $r) => Limit::perHour(30)->by('uploads:'.$by($r)));
+        // Maqola ichidagi rasmlar: bitta maqolada 30 tagacha bo‘lishi mumkin.
+        RateLimiter::for('media', fn (Request $r) => [Limit::perMinute(20)->by('media:'.$by($r)), Limit::perDay(200)->by('media-day:'.$by($r))]);
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(120)->by('api:'.$by($r)));
         RateLimiter::for('ai', fn () => Limit::perMinute((int) config('ai.requests_per_minute')));
     }

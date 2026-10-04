@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MediaUpload;
+use App\Models\Post;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Media\ImageService;
 use App\Support\TextNormalizer;
+use App\Support\ValidationRules;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,5 +62,31 @@ class ComposeController extends Controller
             'tone' => $u->tone(),
             'verified' => $u->isVerified(),
         ])]);
+    }
+
+    /**
+     * Maqola ichiga rasm yuklash. Rasm darhol qayta encode qilinadi (EXIF o‘chadi, WebP)
+     * va muallifga yoziladi; post saqlanganda unga biriktiriladi.
+     */
+    public function image(Request $request, ImageService $images): JsonResponse
+    {
+        $this->authorize('create', Post::class);
+
+        $request->validate(['image' => ['required', ...array_slice(ValidationRules::image(), 1)]], [
+            'image.required' => 'Rasm tanlang.',
+            'image.max' => 'Rasm 5 MB dan oshmasligi kerak.',
+            'image.mimes' => 'Faqat JPG, PNG yoki WEBP rasm yuklash mumkin.',
+            'image.dimensions' => 'Rasm o‘lchami mos emas.',
+        ]);
+
+        $stored = $images->storePostImageWithSize($request->file('image'));
+        $upload = MediaUpload::query()->create(['user_id' => $request->user()->id] + $stored);
+
+        return response()->json([
+            'path' => $upload->path,
+            'url' => $upload->url(),
+            'width' => $upload->width,
+            'height' => $upload->height,
+        ], 201);
     }
 }

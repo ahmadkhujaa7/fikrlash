@@ -188,10 +188,16 @@
       },
       "CreatePost": {
         "type": "object",
-        "required": [
-          "content"
-        ],
+        "required": [],
         "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "post",
+              "article"
+            ],
+            "default": "post"
+          },
           "content": {
             "type": "string",
             "minLength": 1,
@@ -220,8 +226,63 @@
           },
           "draft": {
             "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "Faqat maqola uchun"
+          },
+          "blocks": {
+            "type": "array",
+            "maxItems": 300,
+            "description": "Faqat maqola uchun. Rasm yo‘li /compose/images (veb) orqali yuklangan va muallifga tegishli bo‘lishi kerak.",
+            "items": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "p",
+                    "h",
+                    "quote",
+                    "list",
+                    "image",
+                    "hr"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "description": "p, h, quote; **qalin** va *kursiv* qo‘llanadi"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "list"
+                },
+                "ordered": {
+                  "type": "boolean",
+                  "description": "list"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "image"
+                },
+                "caption": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "description": "image"
+                }
+              }
+            }
           }
-        }
+        },
+        "description": "type=post (standart): content majburiy. type=article: title va blocks majburiy, content serverda bloklardan yig‘iladi."
       },
       "UpdatePost": {
         "type": "object",
