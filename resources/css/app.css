@@ -17,54 +17,61 @@
  */
 
 :root {
+    --canvas: #f1f2f5;
     --paper: #ffffff;
     --surface: #ffffff;
-    --sunken: #f4f4f1;
-    --ink: #151515;
-    --ink-soft: #3f3f3c;
-    --muted: #75756f;
-    --line: #e9e9e5;
-    --line-strong: #d6d6d0;
+    --sunken: #f3f4f7;
+    --ink: #13151b;
+    --ink-soft: #3a3e49;
+    --muted: #6e7280;
+    --line: #e7e8ed;
+    --line-strong: #d2d5dd;
     --lapis: #2343b8;
     --lapis-hover: #1a3496;
-    --lapis-soft: #eef1fb;
+    --lapis-deep: #15297d;
+    --lapis-soft: #edf0fb;
     --firuza: #1f6f6a;
-    --firuza-soft: #eef4f3;
+    --firuza-soft: #eaf4f3;
     --anor: #d92d4b;
     --anor-soft: #fdeef1;
     --amber: #9a6416;
     --amber-soft: #fbf3e4;
     --on-ink: #ffffff;
     --focus: #2343b8;
+    --shadow-sheet: 0 1px 2px rgb(19 21 27 / 0.04), 0 8px 24px -12px rgb(19 21 27 / 0.08);
     color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --paper: #121212;
-        --surface: #121212;
-        --sunken: #1c1c1b;
-        --ink: #ecece8;
-        --ink-soft: #c9c9c3;
-        --muted: #8f8f88;
-        --line: #252524;
-        --line-strong: #34342f;
+        --canvas: #0b0c0f;
+        --paper: #15161a;
+        --surface: #191a1f;
+        --sunken: #1e2026;
+        --ink: #ecedf1;
+        --ink-soft: #c5c8d1;
+        --muted: #8a8e9a;
+        --line: #25272e;
+        --line-strong: #353841;
         --lapis: #92a8ff;
         --lapis-hover: #b1c1ff;
-        --lapis-soft: #1b2133;
+        --lapis-deep: #142266;
+        --lapis-soft: #1a2034;
         --firuza: #6cc3bc;
-        --firuza-soft: #16211f;
+        --firuza-soft: #15211f;
         --anor: #ff6680;
         --anor-soft: #2c1519;
         --amber: #e2ad5c;
         --amber-soft: #2a2114;
-        --on-ink: #121212;
+        --on-ink: #15161a;
         --focus: #92a8ff;
+        --shadow-sheet: 0 0 0 1px rgb(255 255 255 / 0.02);
         color-scheme: dark;
     }
 }
 
 @theme inline {
+    --color-canvas: var(--canvas);
     --color-paper: var(--paper);
     --color-surface: var(--surface);
     --color-sunken: var(--sunken);
@@ -76,6 +83,7 @@
     --color-lapis: var(--lapis);
     --color-lapis-hover: var(--lapis-hover);
     --color-lapis-soft: var(--lapis-soft);
+    --color-lapis-deep: var(--lapis-deep);
     --color-firuza: var(--firuza);
     --color-firuza-soft: var(--firuza-soft);
     --color-anor: var(--anor);
@@ -105,7 +113,7 @@
     }
 
     body {
-        @apply bg-paper font-sans text-base text-ink antialiased;
+        @apply bg-canvas font-sans text-base text-ink antialiased;
     }
 
     h1, h2, h3 {
@@ -116,6 +124,10 @@
         outline: 2px solid var(--focus);
         outline-offset: 2px;
         border-radius: 6px;
+    }
+
+    input[type='search']::-webkit-search-cancel-button {
+        -webkit-appearance: none;
     }
 
     [x-cloak] {
@@ -198,7 +210,7 @@
         @apply rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink;
     }
     .nav-link[aria-current='page'] {
-        @apply text-ink;
+        @apply bg-ink/[0.06] font-medium text-ink;
     }
 
     .tab {
@@ -220,7 +232,7 @@
     }
 
     .chip {
-        @apply inline-flex items-center gap-1 rounded-full border border-line px-3 py-1 text-[13px] text-ink-soft transition-colors hover:border-ink hover:text-ink;
+        @apply inline-flex items-center gap-1 rounded-full border border-line bg-paper px-3 py-1 text-[13px] text-ink-soft transition-colors hover:border-ink hover:text-ink;
     }
 
     .meta {
@@ -234,6 +246,63 @@
     .rail-title {
         @apply mb-3 text-[13px] font-medium text-muted;
     }
+
+    /* ---- Varaq: asosiy ustun kulrang "stol" ustidagi oq qog‘oz ---- */
+    .sheet {
+        @apply bg-paper sm:rounded-[28px] sm:border sm:border-line;
+        box-shadow: var(--shadow-sheet);
+    }
+
+    /* ---- Segmentli tanlagich (lenta tablari) ---- */
+    .seg {
+        @apply inline-flex gap-0.5 rounded-full bg-sunken p-1;
+    }
+    .seg > a {
+        @apply rounded-full px-4 py-1.5 text-[13px] font-medium text-muted transition-colors hover:text-ink;
+    }
+    .seg > a[aria-current='page'] {
+        @apply bg-paper text-ink;
+        box-shadow: 0 1px 2px rgb(19 21 27 / 0.08), 0 0 0 1px rgb(19 21 27 / 0.04);
+    }
+
+    /*
+     * Girih — Samarqand koshinlaridagi sakkiz qirrali yulduz naqshi.
+     * Platformaning yagona "dekorativ" elementi: faqat lojuvard panellarda
+     * (mehmon sahifasi, kirish, profil muqovasi). Rang — currentColor.
+     */
+    .girih {
+        @apply relative isolate overflow-hidden;
+    }
+    .girih::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: currentColor;
+        opacity: var(--girih-opacity, 0.16);
+        -webkit-mask: url('/girih.svg') repeat 0 0 / var(--girih-size, 132px);
+        mask: url('/girih.svg') repeat 0 0 / var(--girih-size, 132px);
+    }
+
+    /* Foydalanuvchi rangi (avatar va muqova) — koshin palitrasi */
+    .tone-0 { --tone: #2343b8; }
+    .tone-1 { --tone: #1b7a74; }
+    .tone-2 { --tone: #b3334c; }
+    .tone-3 { --tone: #b8741a; }
+    .tone-4 { --tone: #56762c; }
+    .tone-5 { --tone: #67408c; }
+    .bg-tone { background-color: var(--tone); }
+
+    /* Yoqtirish — bosilganda yurakcha "tepadi" */
+    .pop {
+        animation: pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1);
+    }
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.32); }
+    100% { transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

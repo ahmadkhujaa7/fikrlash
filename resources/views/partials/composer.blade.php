@@ -15,16 +15,17 @@
       action="{{ $post ? route('posts.update', $post) : route('posts.store') }}"
       x-data="composer({ max: {{ $max }}, content: @js($content) })"
       @if ($compact) x-init="expanded = expanded || {{ $errors->any() ? 'true' : 'false' }}" @endif
-      class="px-4 sm:px-5 {{ $compact ? 'pb-6 pt-10' : 'py-8' }}">
+      class="px-4 sm:px-6 {{ $compact ? 'border-b border-line pb-5 pt-6' : 'py-8' }}">
     @csrf
     @if ($post) @method('PUT') @endif
 
+    @if ($compact)<div class="flex gap-3.5"><x-avatar :user="auth()->user()" size="sm" class="mt-0.5" /><div class="min-w-0 flex-1">@endif
     <label for="content-{{ $post?->id ?? 'new' }}" class="sr-only">Post matni</label>
     <textarea id="content-{{ $post?->id ?? 'new' }}" name="content" x-model="content" x-ref="text"
               @focus="expanded = true" @input="grow($el)" x-init="grow($el)"
               rows="{{ $compact ? 1 : 6 }}" maxlength="{{ $max + 500 }}"
               placeholder="{{ $prompts[now()->dayOfYear % count($prompts)] }}"
-              class="block w-full resize-none border-0 bg-transparent p-0 font-serif text-[1.75rem] leading-[1.3] tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0 {{ $compact ? 'min-h-10' : 'min-h-48' }}"
+              class="block w-full resize-none border-0 bg-transparent p-0 font-serif tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0 {{ $compact ? 'min-h-9 pt-1 text-[1.375rem] leading-[1.35]' : 'min-h-48 text-[1.75rem] leading-[1.3]' }}"
               @if (! $compact) autofocus @endif>{{ $content }}</textarea>
     @error('content')<p class="field-error">{{ $message }}</p>@enderror
 
@@ -70,7 +71,8 @@
                 <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="sr-only" x-ref="image" @change="pick">
             </label>
 
-            <span class="ml-auto text-[13px] tabular-nums" :class="tooLong ? 'font-medium text-anor' : (left < 200 ? 'text-amber' : 'text-muted')"
+            <span class="flex-1"></span>
+            <span class="text-[13px] tabular-nums" :class="tooLong ? 'font-medium text-anor' : (left < 200 ? 'text-amber' : 'text-muted')"
                   x-show="content.length > 0" x-text="left"></span>
 
             @if (! $post || $isDraft)
@@ -85,4 +87,5 @@
             </button>
         </div>
     </div>
+    @if ($compact)</div></div>@endif
 </form>

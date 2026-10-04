@@ -169,6 +169,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             : null;
     }
 
+    /** Avatar va profil muqovasi uchun barqaror rang (koshin palitrasidan, 0–5). */
+    public function tone(): int
+    {
+        return (int) (crc32((string) ($this->username ?? $this->id)) % 6);
+    }
+
     public function initials(): string
     {
         return mb_strtoupper(mb_substr(trim($this->name) ?: $this->username, 0, 1));

@@ -19,7 +19,7 @@
     @else
         <div class="stream">
             @forelse ($comments as $comment)
-                <article class="px-4 py-4 sm:px-5">
+                <article class="px-4 py-4 sm:px-6">
                     <p class="text-sm text-muted">
                         <a href="{{ $comment->post->user->profileUrl() }}" class="hover:underline">{{ '@'.$comment->post->user->username }}</a> postiga:
                         <a href="{{ $comment->url() }}" class="text-ink-soft hover:underline">“{{ $comment->post->excerpt(70) }}”</a>

@@ -13,7 +13,7 @@
 @endphp
 
 @section('content')
-    <article class="px-4 pb-16 pt-12 sm:px-5">
+    <article class="px-4 pb-16 pt-12 sm:px-6">
         <h1 class="display !text-[2.25rem]">Fikrlash.uz API</h1>
         <p class="mt-3 text-ink-soft">REST API, versiya 1. Asosiy manzil: <code class="rounded bg-sunken px-1.5 py-0.5 text-sm">{{ url('/api/v1') }}</code></p>
 

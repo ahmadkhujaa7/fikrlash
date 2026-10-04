@@ -2,7 +2,7 @@
     $me = auth()->user();
     $following = $following ?? (isset($followingIds) ? isset($followingIds[$person->id]) : ($me ? $me->isFollowing($person) : false));
 @endphp
-<div class="flex items-center gap-3 px-4 py-3 sm:px-5">
+<div class="flex items-center gap-3 px-4 py-3 sm:px-6">
     <a href="{{ $person->profileUrl() }}"><x-avatar :user="$person" /></a>
     <a href="{{ $person->profileUrl() }}" class="min-w-0 flex-1">
         <span class="block truncate font-semibold">{{ $person->name }}</span>

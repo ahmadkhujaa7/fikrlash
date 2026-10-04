@@ -23,7 +23,7 @@
                 $p = NotificationPresenter::present($n);
                 [$icon, $tone] = $icons[$n->type->value];
             @endphp
-            <li class="relative flex gap-4 px-4 py-5 sm:px-5 {{ $n->isRead() ? '' : 'bg-sunken/70' }}">
+            <li class="relative flex gap-4 px-4 py-5 sm:px-6 {{ $n->isRead() ? '' : 'bg-sunken/70' }}">
                 <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full {{ $tone }}">
                     <x-ico :name="$icon" size="size-5" :solid="$n->type === T::PostLiked" />
                 </span>

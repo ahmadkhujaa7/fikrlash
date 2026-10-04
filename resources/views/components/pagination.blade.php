@@ -1,6 +1,6 @@
 {{-- Oddiy "oldingi/keyingi" sahifalash (length-aware va simple paginatorlar uchun). --}}
 @if ($paginator->hasPages())
-    <nav class="flex items-center justify-between gap-3 px-4 py-5 sm:px-5" aria-label="Sahifalar">
+    <nav class="flex items-center justify-between gap-3 px-4 py-5 sm:px-6" aria-label="Sahifalar">
         @if ($paginator->onFirstPage())
             <span class="btn btn-secondary btn-sm opacity-40" aria-disabled="true">Oldingi</span>
         @else

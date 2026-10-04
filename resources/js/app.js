@@ -34,6 +34,13 @@ Alpine.data('toggle', ({ active, count, url, onKey, offKey, countKey }) => ({
         const prev = { active: this.active, count: this.count };
         this.active = !this.active;
         this.count += this.active ? 1 : -1;
+        // Faollashganda ikonka "tepadi" (CSS .pop) — harakat foydalanuvchi bosganiga javob.
+        const icon = this.$el.querySelector('svg');
+        if (this.active && icon) {
+            icon.classList.remove('pop');
+            void icon.getBoundingClientRect();
+            icon.classList.add('pop');
+        }
         try {
             const data = await api(this.active ? 'POST' : 'DELETE', url);
             this.active = data[onKey] ?? this.active;

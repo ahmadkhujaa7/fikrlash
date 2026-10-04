@@ -29,7 +29,7 @@
 @endpush
 
 @section('content')
-    <div class="px-4 pt-6 sm:px-5" @auth @if ($post->isPublished()) x-data="readTimer('{{ route('api.v1.posts.read', $post) }}')" @endif @endauth>
+    <div class="px-4 pt-6 sm:px-6" @auth @if ($post->isPublished()) x-data="readTimer('{{ route('api.v1.posts.read', $post) }}')" @endif @endauth>
         <a href="{{ url()->previous() !== url()->current() ? url()->previous() : route('home') }}" class="meta inline-flex items-center gap-1.5 hover:text-ink">
             <x-ico name="arrow-left" size="size-4" /> Orqaga
         </a>
@@ -38,7 +38,7 @@
     @include('partials.post-card', ['post' => $post, 'detail' => true])
 
     @if ($post->ai_summary && $post->isLong())
-        <aside class="px-4 pb-2 sm:px-5" aria-label="Qisqacha mazmun">
+        <aside class="px-4 pb-2 sm:px-6" aria-label="Qisqacha mazmun">
             <p class="meta flex items-center gap-1.5"><x-ico name="sparkles" size="size-4" /> Qisqacha</p>
             <p class="mt-2 font-serif text-[1.125rem] italic leading-relaxed text-ink-soft">{{ $post->ai_summary }}</p>
         </aside>
@@ -46,10 +46,10 @@
 
     @if ($post->isPublished())
         <section id="comments" class="pt-6" x-data="comments({ url: '{{ route('posts.comments', $post) }}' })">
-            <h2 class="px-4 font-serif text-2xl font-medium tracking-[-0.01em] sm:px-5">Izohlar</h2>
+            <h2 class="px-4 font-serif text-2xl font-medium tracking-[-0.01em] sm:px-6">Izohlar</h2>
             @auth
                 @can('interact', $post)
-                    <form method="POST" action="{{ route('comments.store', $post) }}" @submit.prevent="submit($el)" class="mt-4 flex gap-3 border-b border-line px-4 pb-5 sm:px-5">
+                    <form method="POST" action="{{ route('comments.store', $post) }}" @submit.prevent="submit($el)" class="mt-4 flex gap-3 border-b border-line px-4 pb-5 sm:px-6">
                         @csrf
                         <input type="hidden" name="parent_id" :value="replyTo">
                         <x-avatar :user="auth()->user()" size="sm" />
@@ -70,7 +70,7 @@
                     </form>
                 @endcan
             @else
-                <p class="mt-3 border-b border-line px-4 pb-5 text-[15px] text-muted sm:px-5">
+                <p class="mt-3 border-b border-line px-4 pb-5 text-[15px] text-muted sm:px-6">
                     Izoh qoldirish uchun <a href="{{ route('login') }}" class="text-ink underline underline-offset-4">kiring</a>
                     yoki <a href="{{ route('register') }}" class="text-ink underline underline-offset-4">ro‘yxatdan o‘ting</a>.
                 </p>
@@ -79,13 +79,13 @@
             <div x-ref="thread">
                 <div class="flex justify-center py-10"><x-spinner /></div>
             </div>
-            <noscript><p class="px-5 py-4 text-sm text-muted">Izohlarni ko‘rish uchun JavaScript yoqing.</p></noscript>
+            <noscript><p class="px-4 sm:px-6 py-4 text-sm text-muted">Izohlarni ko‘rish uchun JavaScript yoqing.</p></noscript>
         </section>
     @endif
 
     @if ($related->isNotEmpty())
         <section class="mt-10 border-t border-line pt-10">
-            <h2 class="px-4 font-serif text-2xl font-medium tracking-[-0.01em] sm:px-5">O‘xshash fikrlar</h2>
+            <h2 class="px-4 font-serif text-2xl font-medium tracking-[-0.01em] sm:px-6">O‘xshash fikrlar</h2>
             <div class="stream">
                 @foreach ($related as $item)
                     @include('partials.post-card', ['post' => $item])

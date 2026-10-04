@@ -4,16 +4,17 @@
     $suggestedUsers ??= $sidebar->suggestedUsers(auth()->user());
     $categories ??= \App\Models\Category::cachedActive();
 @endphp
-<div class="space-y-10">
+<div class="space-y-9 px-1">
     @if ($trendingTags->isNotEmpty())
         <section>
             <h2 class="rail-title">Shu hafta muhokama qilinmoqda</h2>
             <ol class="space-y-3">
                 @foreach ($trendingTags as $tag)
                     <li>
-                        <a href="{{ route('tags.show', $tag->slug) }}" class="group flex items-baseline justify-between gap-3">
-                            <span class="font-serif text-[1.05rem] text-ink group-hover:text-lapis">#{{ $tag->name }}</span>
-                            <span class="meta tabular-nums">{{ $tag->recent_posts }}</span>
+                        <a href="{{ route('tags.show', $tag->slug) }}" class="group flex items-baseline gap-3">
+                            <span class="w-4 shrink-0 text-right text-[12px] tabular-nums text-muted/70">{{ $loop->iteration }}</span>
+                            <span class="flex-1 truncate font-serif text-[1.075rem] text-ink group-hover:text-lapis">#{{ $tag->name }}</span>
+                            <span class="meta tabular-nums">{{ $tag->recent_posts }} ta fikr</span>
                         </a>
                     </li>
                 @endforeach

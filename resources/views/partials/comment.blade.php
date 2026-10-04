@@ -4,7 +4,7 @@
     $me = auth()->user();
     $isReply = $comment->parent_id !== null;
 @endphp
-<div id="comment-{{ $comment->id }}" data-item class="{{ $isReply ? 'pt-3' : 'px-4 py-5 sm:px-5' }}">
+<div id="comment-{{ $comment->id }}" data-item class="{{ $isReply ? 'pt-3' : 'px-4 py-5 sm:px-6' }}">
     <div class="flex gap-3">
         <a href="{{ $comment->user->profileUrl() }}" class="shrink-0" tabindex="-1" aria-hidden="true">
             <x-avatar :user="$comment->user" :size="$isReply ? 'xs' : 'sm'" />

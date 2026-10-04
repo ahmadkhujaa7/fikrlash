@@ -19,13 +19,13 @@
 @endphp
 <article id="post-{{ $post->id }}" data-item
          @if ($post->isPublished()) data-track-view data-post-id="{{ $post->id }}" @endif
-         class="px-4 sm:px-5 {{ $detail ? 'pt-8 pb-6' : 'py-7' }}">
+         class="px-4 sm:px-6 {{ $detail ? 'pt-8 pb-6' : 'py-6' }}">
 
     <header class="flex items-center gap-3">
         <a href="{{ $author->profileUrl() }}" class="shrink-0" tabindex="-1" aria-hidden="true">
-            <x-avatar :user="$author" :size="$detail ? 'md' : 'xs'" />
+            <x-avatar :user="$author" :size="$detail ? 'md' : 'sm'" />
         </a>
-        <div class="flex min-w-0 flex-1 {{ $detail ? 'flex-col' : 'items-baseline gap-2' }}">
+        <div class="flex min-w-0 flex-1 {{ $detail ? 'flex-col' : 'flex-col sm:flex-row sm:items-baseline sm:gap-2' }}">
             <a href="{{ $author->profileUrl() }}" class="truncate text-sm font-medium text-ink hover:underline">{{ $author->name }}</a>
             @if ($detail)
                 <span class="meta">{{ '@'.$author->username }}</span>
@@ -40,7 +40,7 @@
             <span class="text-muted" title="Faqat obunachilar ko‘radi"><x-ico name="lock" size="size-4" /></span>
         @endif
         @if ($post->category && ! $detail)
-            <a href="{{ route('categories.show', $post->category) }}" class="meta hidden shrink-0 hover:text-ink sm:inline">{{ $post->category->name }}</a>
+            <a href="{{ route('categories.show', $post->category) }}" class="hidden shrink-0 items-center gap-1.5 rounded-full bg-sunken px-2.5 py-0.5 text-[12px] text-ink-soft hover:text-ink sm:inline-flex">{{ $post->category->name }}</a>
         @endif
 
         <x-dropdown label="Post amallari">
@@ -71,12 +71,12 @@
     @if ($detail)
         <div class="prose-post mt-6 !text-[1.375rem] !leading-[1.62]">{!! ContentFormatter::toHtml($post->content) !!}</div>
     @elseif ($post->isLong())
-        <div class="prose-post mt-3.5" x-data="{ more: false }">
+        <div class="prose-post mt-3" x-data="{ more: false }">
             <div class="clamp-post" :class="{ 'clamp-post': !more }">{!! ContentFormatter::toHtml($post->content) !!}</div>
             <button type="button" x-show="!more" @click="more = true" class="mt-2 font-sans text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">Davomini o‘qish</button>
         </div>
     @else
-        <div class="prose-post mt-3.5 cursor-pointer" x-data @click="$event.target.closest('a,button') || (location.href = '{{ $url }}')">{!! ContentFormatter::toHtml($post->content) !!}</div>
+        <div class="prose-post mt-3 cursor-pointer" x-data @click="$event.target.closest('a,button') || (location.href = '{{ $url }}')">{!! ContentFormatter::toHtml($post->content) !!}</div>
     @endif
 
     @if ($post->image_path)
@@ -100,10 +100,10 @@
     @endif
 
     @if ($post->isPublished())
-        <footer class="{{ $detail ? 'mt-6 border-y border-line py-2' : 'mt-5 -ml-2' }} flex items-center gap-1 text-[13px] text-muted">
+        <footer class="{{ $detail ? 'mt-6 border-y border-line py-2' : 'mt-4 -ml-2.5 -mr-2' }} flex items-center gap-1 text-[13px] text-muted">
             @auth
                 <button type="button"
-                        @class(['group flex items-center gap-1.5 rounded-full px-2 py-1.5 tabular-nums transition-colors hover:text-anor', 'text-anor' => $post->is_liked])
+                        @class(['group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 tabular-nums transition-colors hover:bg-anor-soft hover:text-anor', 'text-anor' => $post->is_liked])
                         x-data="toggle({ active: {{ $post->is_liked ? 'true' : 'false' }}, count: {{ (int) $post->likes_count }}, url: '{{ route('api.v1.posts.like', $post) }}', onKey: 'liked', countKey: 'likes_count' })"
                         @click="flip" :class="{ 'text-anor': active }" aria-pressed="{{ $post->is_liked ? 'true' : 'false' }}" :aria-pressed="active" aria-label="Yoqtirish">
                     <svg class="size-[18px]" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" fill="{{ $post->is_liked ? 'currentColor' : 'none' }}" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $heart }}"/></svg>
@@ -115,26 +115,26 @@
                 </a>
             @endauth
 
-            <a href="{{ $url }}#comments" class="flex items-center gap-1.5 rounded-full px-2 py-1.5 tabular-nums transition-colors hover:text-ink" aria-label="Izohlar">
+            <a href="{{ $url }}#comments" class="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 tabular-nums transition-colors hover:bg-sunken hover:text-ink" aria-label="Izohlar">
                 <x-ico name="chat" size="size-[18px]" />
                 <span @if ($detail) x-data="{ n: {{ (int) $post->comments_count }} }" @comments-count.window="n = $event.detail" x-text="n || ''" @endif>{{ $post->comments_count ?: '' }}</span>
             </a>
 
-            <span class="flex items-center gap-1.5 px-2 py-1.5 tabular-nums" title="Ko‘rishlar">
+            <span class="flex items-center gap-1.5 px-2.5 py-1.5 tabular-nums" title="Ko‘rishlar">
                 <x-ico name="eye" size="size-[18px]" />{{ $post->views_count ? Number::abbreviate($post->views_count) : '' }}
             </span>
 
             <div class="ml-auto flex items-center">
                 @auth
                     <button type="button"
-                            @class(['rounded-full p-2 transition-colors hover:text-ink', 'text-ink' => $post->is_saved])
+                            @class(['rounded-full p-2 transition-colors hover:bg-sunken hover:text-ink', 'text-lapis' => $post->is_saved])
                             x-data="toggle({ active: {{ $post->is_saved ? 'true' : 'false' }}, count: 0, url: '{{ route('api.v1.posts.save', $post) }}', onKey: 'saved' })"
                             @click="flip().then(() => toast(active ? 'Saqlanganlarga qo‘shildi.' : 'Saqlanganlardan olib tashlandi.'))"
-                            :class="{ 'text-ink': active }" aria-pressed="{{ $post->is_saved ? 'true' : 'false' }}" :aria-pressed="active" aria-label="Saqlash">
+                            :class="{ 'text-lapis': active }" aria-pressed="{{ $post->is_saved ? 'true' : 'false' }}" :aria-pressed="active" aria-label="Saqlash">
                         <svg class="size-[18px]" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" fill="{{ $post->is_saved ? 'currentColor' : 'none' }}" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $bookmark }}"/></svg>
                     </button>
                 @endauth
-                <button type="button" class="rounded-full p-2 transition-colors hover:text-ink" @click="sharePost('{{ $url }}', '')" aria-label="Ulashish">
+                <button type="button" class="rounded-full p-2 transition-colors hover:bg-sunken hover:text-ink" @click="sharePost('{{ $url }}', '')" aria-label="Ulashish">
                     <x-ico name="share" size="size-[18px]" />
                 </button>
             </div>
