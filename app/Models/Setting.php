@@ -31,6 +31,13 @@ class Setting extends Model
         'ai_enabled' => true,
         'ai_auto_moderation' => true,
         'announcement' => null,
+        // Brending
+        'site_name' => 'Fikrlash.uz',
+        'logo_light' => null,
+        'logo_dark' => null,
+        'favicon' => null,
+        // Bosh sahifadagi "Kun savoli" — foydalanuvchilarni yozishga undaydi.
+        'daily_question' => null,
     ];
 
     public static function read(string $key, mixed $default = null): mixed

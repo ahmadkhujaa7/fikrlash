@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\InitialsAvatarProvider;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Support\Branding;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -32,7 +33,12 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->brandName('Fikrlash · Admin')
+            ->brandName(fn () => Branding::name().' · Admin')
+            // Logo va favicon — "Tizim sozlamalari → Brending" dan.
+            ->brandLogo(fn () => Branding::logoUrl())
+            ->darkModeBrandLogo(fn () => Branding::logoUrl(dark: true) ?? Branding::logoUrl())
+            ->brandLogoHeight('2rem')
+            ->favicon(fn () => Branding::faviconUrl() ?? '/favicon.svg')
             ->colors(['primary' => Color::hex('#2343b8'), 'gray' => Color::Stone])
             ->font('Onest')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')

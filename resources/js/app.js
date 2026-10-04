@@ -100,34 +100,354 @@ Alpine.data('infinite', (next) => ({
 }));
 
 /* ---------- Post yozish formasi ---------- */
-Alpine.data('composer', ({ max, content = '' }) => ({
-    content,
-    max,
+/* ---------- Post yozish ---------- */
+const WORD = "[\\p{L}\\p{N}_‘’ʻʼ']";
+// Kursor oldidagi "#so‘z" yoki "@user" — takliflar shu bo‘lak uchun chiqadi.
+const TOKEN_RE = new RegExp(`(^|[\\s(])([#@])(${WORD}{0,50})$`, 'u');
+const TAG_RE = new RegExp(`(^|[^\\p{L}\\p{N}_&/#])#(${WORD}{2,50})`, 'gu');
+const TAG_NAME_RE = new RegExp(`^${WORD}{1,50}$`, 'u');
+
+const draftStore = {
+    get(key) {
+        try {
+            return JSON.parse(localStorage.getItem(key) ?? 'null');
+        } catch {
+            return null;
+        }
+    },
+    set(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch {
+            /* xususiy rejim yoki joy tugagan — qoralama shunchaki saqlanmaydi */
+        }
+    },
+    remove(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch {
+            /* e'tiborsiz */
+        }
+    },
+};
+
+const escapeHtml = (s) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+
+/** Oldindan ko‘rish uchun: serverdagi ContentFormatter bilan bir xil ko‘rinish (avval escape, keyin havolalar). */
+function formatPreview(text) {
+    let html = escapeHtml(text.trim().replace(/\n{3,}/g, '\n\n'));
+    html = html.replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a class="link">${url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}</a>`);
+    html = html.replace(/(^|[^\p{L}\p{N}_@/])@([A-Za-z0-9_]{3,30})/gu, '$1<a class="mention">@$2</a>');
+    html = html.replace(new RegExp(`(^|[^\\p{L}\\p{N}_&/#;])#(${WORD}{2,50})`, 'gu'), '$1<a class="hashtag">#$2</a>');
+    return html.replace(/\n/g, '<br>') || '<span class="text-muted">Matn yozilganda shu yerda ko‘rinadi.</span>';
+}
+
+Alpine.data('composer', (opts) => ({
+    content: opts.content ?? '',
+    initial: opts.content ?? '',
+    max: opts.max,
+    full: !!opts.full,
+    tags: opts.tags ?? [],
+    maxTags: opts.maxTags ?? 5,
     preview: null,
-    expanded: content.length > 0,
+    imageInfo: '',
+    expanded: !!opts.full || (opts.content ?? '').length > 0,
+    showPreview: false,
+    dragging: false,
+    restored: false,
+    submitting: false,
+    savedLabel: '',
+    ac: { open: false, items: [], index: 0, type: null, start: 0 },
+    tagQuery: '',
+    tagSuggest: { open: false, items: [], index: 0 },
+    _timers: {},
+    _abort: null,
+
+    init() {
+        if (opts.draftKey) {
+            const saved = draftStore.get(opts.draftKey);
+            if (saved?.content?.trim() && !this.content.trim()) {
+                this.content = saved.content;
+                this.tags = Array.isArray(saved.tags) ? saved.tags : this.tags;
+                this.restored = true;
+                this.expanded = true;
+                this.$nextTick(() => this.grow(this.$refs.text));
+            }
+            this.$watch('content', () => this.scheduleSave());
+            this.$watch('tags', () => this.scheduleSave());
+        }
+        if (this.full) {
+            // Yozilgan matn tasodifan yo‘qolmasin.
+            window.addEventListener('beforeunload', (e) => {
+                if (!this.submitting && this.content.trim() !== this.initial.trim() && !opts.draftKey) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+        }
+    },
+
     get left() {
         return this.max - [...this.content].length;
     },
     get tooLong() {
         return this.left < 0;
     },
+    get progress() {
+        return Math.min(1, [...this.content].length / this.max);
+    },
+    get words() {
+        return (this.content.trim().match(/\S+/g) || []).length;
+    },
+    get readMinutes() {
+        return Math.max(1, Math.round(this.words / 180));
+    },
+    get textTags() {
+        const found = [];
+        for (const m of this.content.matchAll(TAG_RE)) {
+            const tag = m[2];
+            if (!found.some((t) => t.toLowerCase() === tag.toLowerCase())) found.push(tag);
+        }
+        return found.slice(0, 10);
+    },
+    get previewHtml() {
+        return formatPreview(this.content);
+    },
+
     grow(el) {
+        if (!el) return;
         el.style.height = 'auto';
         el.style.height = `${el.scrollHeight}px`;
     },
-    pick(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-            toast('Rasm 5 MB dan oshmasligi kerak.', 'error');
-            event.target.value = '';
+    togglePreview() {
+        this.showPreview = !this.showPreview;
+        if (!this.showPreview) this.$nextTick(() => this.$refs.text.focus());
+    },
+    onSubmit(e) {
+        if (!this.content.trim() || this.tooLong || this.submitting) {
+            e.preventDefault();
             return;
         }
+        this.submitting = true;
+        if (opts.draftKey) draftStore.remove(opts.draftKey);
+    },
+
+    /* --- Rasm: tanlash, sudrab tashlash, Ctrl+V --- */
+    pick(event) {
+        const file = event.target.files[0];
+        if (file) this.useFile(file, false);
+    },
+    useFile(file, assign = true) {
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast('Faqat JPG, PNG yoki WEBP rasm qo‘shish mumkin.', 'error');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast('Rasm 5 MB dan oshmasligi kerak.', 'error');
+            if (this.$refs.image) this.$refs.image.value = '';
+            return;
+        }
+        if (assign) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            this.$refs.image.files = dt.files;
+        }
+        this.expanded = true;
         this.preview = URL.createObjectURL(file);
+        this.imageInfo = `${(file.size / 1024 / 1024).toFixed(1)} MB`;
+    },
+    drop(event) {
+        this.dragging = false;
+        const file = [...(event.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
+        if (file) this.useFile(file);
+    },
+    paste(event) {
+        const item = [...(event.clipboardData?.items ?? [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'));
+        if (item) {
+            event.preventDefault();
+            this.useFile(item.getAsFile());
+        }
     },
     clearImage() {
         this.preview = null;
+        this.imageInfo = '';
         this.$refs.image.value = '';
+    },
+
+    /* --- Qoralama (brauzerda) --- */
+    scheduleSave() {
+        clearTimeout(this._timers.save);
+        this._timers.save = setTimeout(() => {
+            if (this.submitting) return;
+            if (this.content.trim()) {
+                draftStore.set(opts.draftKey, { content: this.content, tags: this.tags, at: Date.now() });
+                this.savedLabel = 'Qoralama saqlandi';
+            } else {
+                draftStore.remove(opts.draftKey);
+                this.savedLabel = '';
+            }
+        }, 700);
+    },
+    discardDraft() {
+        draftStore.remove(opts.draftKey);
+        this.content = '';
+        this.tags = [];
+        this.restored = false;
+        this.savedLabel = '';
+        this.$nextTick(() => {
+            this.grow(this.$refs.text);
+            this.$refs.text.focus();
+        });
+    },
+
+    /* --- # va @ takliflari matn ichida --- */
+    onInput(event) {
+        this.grow(event.target);
+        this.restored = false;
+        this.detectToken();
+    },
+    detectToken() {
+        const el = this.$refs.text;
+        if (!el || el.selectionStart !== el.selectionEnd) return this.closeAc();
+        const match = el.value.slice(0, el.selectionStart).match(TOKEN_RE);
+        if (!match) return this.closeAc();
+
+        const type = match[2] === '#' ? 'tag' : 'user';
+        const query = match[3];
+        this.ac.type = type;
+        this.ac.start = el.selectionStart - query.length - 1;
+        clearTimeout(this._timers.ac);
+        this._timers.ac = setTimeout(() => this.loadAc(type, query), 150);
+    },
+    async loadAc(type, query) {
+        this._abort?.abort();
+        const controller = (this._abort = new AbortController());
+        try {
+            const url = `${type === 'tag' ? opts.tagsUrl : opts.usersUrl}?${new URLSearchParams({ q: query })}`;
+            const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', signal: controller.signal });
+            if (!res.ok) return;
+            const data = await res.json();
+            let items;
+            if (type === 'user') {
+                items = data.users.map((u) => ({ key: `u-${u.username}`, type: 'user', insert: `@${u.username}`, name: u.name, username: u.username, avatar: u.avatar_url, initials: u.initials, tone: u.tone, verified: u.verified }));
+            } else {
+                items = data.tags.map((t) => ({ key: `t-${t.slug}`, type: 'tag', insert: `#${t.name}`, name: t.name, count: t.posts_count }));
+                if (data.can_create && query.length >= 2) items.push({ key: 'new', type: 'tag', insert: `#${query}`, name: query, isNew: true });
+            }
+            this.ac.items = items;
+            this.ac.index = 0;
+            this.ac.open = items.length > 0 && document.activeElement === this.$refs.text;
+        } catch {
+            /* bekor qilingan so‘rov */
+        }
+    },
+    onKeydown(event) {
+        if (!this.ac.open || event.ctrlKey || event.metaKey) return;
+        const n = this.ac.items.length;
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            this.ac.index = (this.ac.index + 1) % n;
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            this.ac.index = (this.ac.index - 1 + n) % n;
+        } else if (event.key === 'Enter' || event.key === 'Tab') {
+            event.preventDefault();
+            this.choose(this.ac.items[this.ac.index]);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            this.closeAc();
+        }
+    },
+    choose(item) {
+        if (!item) return;
+        const el = this.$refs.text;
+        const before = this.content.slice(0, this.ac.start);
+        const after = this.content.slice(el.selectionStart).replace(new RegExp(`^${WORD}*`, 'u'), '');
+        const insert = `${item.insert} `;
+        this.content = before + insert + after;
+        this.closeAc();
+        this.$nextTick(() => {
+            const pos = before.length + insert.length;
+            el.focus();
+            el.setSelectionRange(pos, pos);
+            this.grow(el);
+        });
+    },
+    closeAc() {
+        this.ac.open = false;
+        this.ac.items = [];
+    },
+    insertSymbol(symbol) {
+        this.expanded = true;
+        this.showPreview = false;
+        this.$nextTick(() => {
+            const el = this.$refs.text;
+            const start = el.selectionStart ?? this.content.length;
+            const end = el.selectionEnd ?? start;
+            const pad = start > 0 && !/\s/.test(this.content[start - 1]) ? ' ' : '';
+            this.content = this.content.slice(0, start) + pad + symbol + this.content.slice(end);
+            this.$nextTick(() => {
+                const pos = start + pad.length + 1;
+                el.focus();
+                el.setSelectionRange(pos, pos);
+                this.detectToken();
+            });
+        });
+    },
+
+    /* --- Teg chiplari --- */
+    async loadTagSuggestions() {
+        const query = this.tagQuery.replace(/^#+/, '').trim();
+        try {
+            const res = await fetch(`${opts.tagsUrl}?${new URLSearchParams({ q: query })}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const taken = this.tags.map((t) => t.toLowerCase());
+            const items = data.tags.filter((t) => !taken.includes(t.name.toLowerCase())).map((t) => ({ key: t.slug, name: t.name, count: t.posts_count }));
+            if (data.can_create && query && TAG_NAME_RE.test(query.replace(/\s+/g, '_'))) {
+                items.unshift({ key: 'new', name: query.replace(/\s+/g, '_'), isNew: true });
+            }
+            this.tagSuggest = { open: items.length > 0 && document.activeElement === this.$refs.tagInput, items, index: 0 };
+        } catch {
+            /* e'tiborsiz */
+        }
+    },
+    addTag(raw) {
+        const name = String(raw ?? this.tagQuery).replace(/^#+/, '').trim().replace(/\s+/g, '_');
+        if (!name) return;
+        if (!TAG_NAME_RE.test(name)) {
+            toast('Teg faqat harf, raqam va _ belgisidan iborat bo‘lishi mumkin.', 'error');
+            return;
+        }
+        if (this.tags.length >= this.maxTags) {
+            toast(`Ko‘pi bilan ${this.maxTags} ta teg qo‘shish mumkin.`, 'error');
+            return;
+        }
+        if (!this.tags.some((t) => t.toLowerCase() === name.toLowerCase())) this.tags.push(name);
+        this.tagQuery = '';
+        this.tagSuggest.open = false;
+        this.$nextTick(() => this.$refs.tagInput?.focus());
+    },
+    removeTag(index) {
+        this.tags.splice(index, 1);
+    },
+    tagKeydown(event) {
+        const s = this.tagSuggest;
+        if (event.key === 'ArrowDown' && s.open) {
+            event.preventDefault();
+            s.index = (s.index + 1) % s.items.length;
+        } else if (event.key === 'ArrowUp' && s.open) {
+            event.preventDefault();
+            s.index = (s.index - 1 + s.items.length) % s.items.length;
+        } else if (event.key === 'Enter' || event.key === ',' || (event.key === ' ' && this.tagQuery.trim())) {
+            event.preventDefault();
+            this.addTag(s.open && s.items[s.index] && event.key === 'Enter' ? s.items[s.index].name : this.tagQuery);
+        } else if (event.key === 'Backspace' && !this.tagQuery && this.tags.length) {
+            this.tags.pop();
+        } else if (event.key === 'Escape') {
+            s.open = false;
+        }
     },
 }));
 

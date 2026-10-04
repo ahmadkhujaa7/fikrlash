@@ -12,6 +12,6 @@ class ViewUser extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [EditAction::make(), ...UserResource::moderationActions()];
+        return [EditAction::make(), ...UserResource::verificationActions(), ...UserResource::moderationActions()];
     }
 }

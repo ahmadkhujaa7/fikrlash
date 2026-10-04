@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ComposeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
@@ -64,6 +65,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/posts/{post}', [PostController::class, 'update'])->whereNumber('post')->name('posts.update');
     Route::delete('/posts/{post}', [PostController::class, 'destroy'])->whereNumber('post')->name('posts.destroy');
     Route::get('/drafts', [PostController::class, 'drafts'])->name('posts.drafts');
+    Route::get('/compose/tags', [ComposeController::class, 'tags'])->middleware('throttle:search-live')->name('compose.tags');
+    Route::get('/compose/users', [ComposeController::class, 'users'])->middleware('throttle:search-live')->name('compose.users');
 
     Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->whereNumber('post')->middleware('throttle:comments')->name('comments.store');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');

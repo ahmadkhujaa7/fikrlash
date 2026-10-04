@@ -5,7 +5,7 @@
     <div class="flex items-center gap-3 px-2 py-2">
         <a href="{{ $user->profileUrl() }}" class="btn-ghost rounded-full p-2" aria-label="Profilga qaytish"><x-ico name="arrow-left" /></a>
         <div>
-            <h1 class="font-semibold leading-tight">{{ $user->name }}</h1>
+            <h1 class="flex items-center gap-1 font-semibold leading-tight">{{ $user->name }}<x-verified :user="$user" /></h1>
             <p class="text-sm text-muted">{{ '@'.$user->username }}</p>
         </div>
     </div>

@@ -12,7 +12,8 @@ final class ValidationRules
 {
     public static function name(): array
     {
-        return ['required', 'string', 'min:2', 'max:'.config('fikrlash.profile.name_max')];
+        // Tasdiqlangan belgisini ism ichida soxtalashtirib bo‘lmaydi.
+        return ['required', 'string', 'min:2', 'max:'.config('fikrlash.profile.name_max'), 'not_regex:/[\x{2713}\x{2714}\x{2611}\x{2705}\x{1F5F8}\x{1F5F9}\x{2714}\x{FE0F}]/u'];
     }
 
     public static function username(?int $ignoreUserId = null): array

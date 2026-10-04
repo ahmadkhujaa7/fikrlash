@@ -4,34 +4,43 @@ namespace App\Filament\Resources\Users;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Models\User;
+use App\Services\Account\VerificationService;
 use App\Services\Moderation\ModerationService;
 use App\Support\PhoneNumber;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -66,6 +75,23 @@ class UserResource extends Resource
                     ->helperText('Admin roli admin panelga to‘liq kirish huquqini beradi.'),
                 Textarea::make('bio')->maxLength(300)->columnSpanFull(),
             ]),
+            // Faqat yangi foydalanuvchi yaratishda: kirish ma'lumotlari va boshlang‘ich holat.
+            Section::make('Kirish ma’lumotlari')->columns(2)->columnSpanFull()->visibleOn('create')->schema([
+                TextInput::make('phone')->label('Telefon')->tel()->required()->placeholder('+998 90 123 45 67')
+                    ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
+                        $phone = PhoneNumber::normalize($value);
+                        if (! $phone) {
+                            $fail('Telefon raqam noto‘g‘ri. Masalan: +998 90 123 45 67');
+                        } elseif (User::withTrashed()->where('phone', $phone)->exists()) {
+                            $fail('Bu telefon raqam bilan akkaunt allaqachon mavjud.');
+                        }
+                    }),
+                TextInput::make('password')->label('Parol')->password()->revealable()->required()->minLength(8)
+                    ->helperText('Foydalanuvchiga xavfsiz yo‘l bilan yetkazing; u keyin sozlamalarda o‘zgartira oladi.'),
+                Select::make('status')->label('Holat')->options(UserStatus::class)->default(UserStatus::Active->value)->required(),
+                Toggle::make('is_verified')->label('Tasdiqlangan akkaunt')->inline(false)
+                    ->helperText('Ism yonida tasdiqlangan belgisi ko‘rinadi.'),
+            ]),
         ]);
     }
 
@@ -78,6 +104,9 @@ class UserResource extends Resource
                 TextEntry::make('phone')->label('Telefon')->formatStateUsing(fn ($state) => PhoneNumber::format($state)),
                 TextEntry::make('email')->placeholder('—'),
                 TextEntry::make('role')->label('Rol')->badge(),
+                IconEntry::make('verified_at')->label('Tasdiqlangan')->boolean()
+                    ->state(fn (User $r) => $r->isVerified())
+                    ->trueIcon(Heroicon::CheckBadge)->trueColor('primary')->falseIcon(Heroicon::OutlinedMinus)->falseColor('gray'),
                 TextEntry::make('status')->label('Holat')->badge()->color(fn (User $r) => self::statusColor($r->status)),
                 TextEntry::make('suspended_until')->label('Cheklov muddati')->dateTime('d.m.Y H:i')->placeholder('—'),
                 TextEntry::make('followers_count')->label('Obunachilar'),
@@ -95,12 +124,17 @@ class UserResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label('Ism')->searchable()->sortable()
-                    ->description(fn (User $r) => '@'.$r->username),
+                    ->description(fn (User $r) => '@'.$r->username)
+                    ->icon(fn (User $r) => $r->isVerified() ? Heroicon::CheckBadge : null)->iconColor('primary')->iconPosition('after'),
                 TextColumn::make('username')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('phone')->label('Telefon')->searchable()
                     ->formatStateUsing(fn ($state) => PhoneNumber::format($state))->toggleable(),
                 TextColumn::make('status')->label('Holat')->badge()->color(fn (User $r) => self::statusColor($r->status)),
                 TextColumn::make('role')->label('Rol')->badge()->color(fn (User $r) => $r->isAdmin() ? 'warning' : 'gray'),
+                IconColumn::make('verified_at')->label('Tasdiqlangan')->boolean()
+                    ->state(fn (User $r) => $r->isVerified())
+                    ->trueIcon(Heroicon::CheckBadge)->trueColor('primary')->falseIcon(Heroicon::OutlinedMinus)->falseColor('gray')
+                    ->toggleable(),
                 TextColumn::make('followers_count')->label('Obunachilar')->numeric()->sortable(),
                 TextColumn::make('created_at')->label('Ro‘yxatdan o‘tgan')->dateTime('d.m.Y')->sortable(),
                 TextColumn::make('last_active_at')->label('Faollik')->since()->sortable()->toggleable(),
@@ -109,15 +143,67 @@ class UserResource extends Resource
             ->filters([
                 SelectFilter::make('status')->label('Holat')->options(UserStatus::class),
                 SelectFilter::make('role')->label('Rol')->options(UserRole::class),
+                TernaryFilter::make('verified')->label('Tasdiqlangan')
+                    ->trueLabel('Faqat tasdiqlanganlar')->falseLabel('Tasdiqlanmaganlar')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('verified_at'),
+                        false: fn (Builder $query) => $query->whereNull('verified_at'),
+                    ),
                 TrashedFilter::make(),
             ])
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
+                    ...self::verificationActions(),
                     ...self::moderationActions(),
                 ]),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('verifyMany')
+                        ->label('Tasdiqlash')->icon(Heroicon::OutlinedCheckBadge)->color('primary')
+                        ->requiresConfirmation()->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $count = $records->reject(fn (User $u) => $u->trashed())
+                                ->filter(fn (User $u) => app(VerificationService::class)->verify($u, auth()->user()))->count();
+                            Notification::make()->title("{$count} ta akkaunt tasdiqlandi")->success()->send();
+                        }),
+                    BulkAction::make('unverifyMany')
+                        ->label('Tasdiqni olib tashlash')->icon(Heroicon::OutlinedXCircle)->color('gray')
+                        ->requiresConfirmation()->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $count = $records->filter(fn (User $u) => app(VerificationService::class)->unverify($u, auth()->user()))->count();
+                            Notification::make()->title("{$count} ta akkauntdan belgi olindi")->success()->send();
+                        }),
+                ]),
             ]);
+    }
+
+    /** @return list<Action> */
+    public static function verificationActions(): array
+    {
+        return [
+            Action::make('verify')
+                ->label('Tasdiqlash')
+                ->icon(Heroicon::OutlinedCheckBadge)->color('primary')
+                ->visible(fn (User $r) => ! $r->trashed() && ! $r->isVerified())
+                ->requiresConfirmation()
+                ->modalDescription('Foydalanuvchi ismi yonida tasdiqlangan belgisi paydo bo‘ladi va unga bildirishnoma boradi.')
+                ->action(function (User $record) {
+                    app(VerificationService::class)->verify($record, auth()->user());
+                    Notification::make()->title('Akkaunt tasdiqlandi')->success()->send();
+                }),
+            Action::make('unverify')
+                ->label('Tasdiqni olib tashlash')
+                ->icon(Heroicon::OutlinedXCircle)->color('gray')
+                ->visible(fn (User $r) => $r->isVerified())
+                ->requiresConfirmation()
+                ->action(function (User $record) {
+                    app(VerificationService::class)->unverify($record, auth()->user());
+                    Notification::make()->title('Tasdiq belgisi olib tashlandi')->success()->send();
+                }),
+        ];
     }
 
     /** @return list<Action> */
@@ -173,13 +259,9 @@ class UserResource extends Resource
     {
         return [
             'index' => ListUsers::route('/'),
+            'create' => CreateUser::route('/create'),
             'view' => ViewUser::route('/{record}'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return false; // foydalanuvchilar faqat SMS tasdiqlash orqali ro‘yxatdan o‘tadi
     }
 }

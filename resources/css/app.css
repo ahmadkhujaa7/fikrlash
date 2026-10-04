@@ -243,6 +243,11 @@
         @apply rounded-2xl border border-line bg-surface;
     }
 
+    .kbd {
+        @apply inline-grid min-w-6 place-items-center rounded-md border border-line-strong bg-paper px-1.5 py-0.5 font-sans text-[11px] font-medium text-ink-soft;
+        box-shadow: inset 0 -1px 0 var(--line-strong);
+    }
+
     .rail-title {
         @apply mb-3 text-[13px] font-medium text-muted;
     }

@@ -135,7 +135,7 @@ class PostTest extends TestCase
             ->assertDontSee('<script>alert("x")</script>', false);
     }
 
-    public function test_composer_is_text_and_image_only_and_edit_keeps_ai_topic(): void
+    public function test_composer_has_text_image_and_tags_but_no_topic_and_edit_keeps_ai_topic(): void
     {
         $this->seedCategories();
         $user = User::factory()->create();
@@ -144,7 +144,7 @@ class PostTest extends TestCase
         $this->assertStringContainsString('name="content"', $html);
         $this->assertStringContainsString('name="image"', $html);
         $this->assertStringNotContainsString('name="category_id"', $html);
-        $this->assertStringNotContainsString('name="tags"', $html);
+        $this->assertStringContainsString('name="tags"', $html); // foydalanuvchi o‘zi teg yarata oladi
         $this->assertStringNotContainsString('name="visibility"', $html);
 
         // Tahrirlashda faqat matn yuboriladi — AI aniqlagan mavzu va teglar saqlanib qoladi.
@@ -161,5 +161,42 @@ class PostTest extends TestCase
         $this->assertContains('laravel', $slugs);
         $this->assertContains('php', $slugs);
         $this->assertLessThanOrEqual(4, count($slugs));
+    }
+
+    public function test_user_creates_own_hashtags_from_chips_and_text(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/posts', ['content' => 'Bugun #kitob haqida yozdim', 'tags' => 'yangi_teg, Mutolaa'])->assertRedirect();
+        $post = Post::query()->latest('id')->firstOrFail();
+        $slugs = $post->tags()->pluck('slug')->all();
+        $this->assertContains('kitob', $slugs);
+        $this->assertContains('yangi_teg', $slugs);
+        $this->assertContains('mutolaa', $slugs);
+        $this->get('/t/yangi_teg')->assertOk()->assertSee('Bugun');
+
+        // Takliflar: mavjud teg topiladi, yo‘q teg uchun "yaratish" taklif qilinadi.
+        $this->actingAs($user)->getJson('/compose/tags?q=kit')->assertOk()
+            ->assertJsonPath('tags.0.slug', 'kitob')->assertJsonPath('can_create', true);
+        $this->actingAs($user)->getJson('/compose/tags?q=kitob')->assertJsonPath('can_create', false);
+
+        // Noto‘g‘ri teg va limitdan ortig‘i rad etiladi.
+        $this->actingAs($user)->post('/posts', ['content' => 'Matn', 'tags' => 'a-b'])->assertSessionHasErrors('tags.0');
+        $this->actingAs($user)->post('/posts', ['content' => 'Matn', 'tags' => 'a1,b1,c1,d1,e1,f1'])->assertSessionHasErrors('tags');
+    }
+
+    public function test_mention_suggestions_put_followed_and_verified_people_first(): void
+    {
+        $me = User::factory()->create();
+        $popular = User::factory()->create(['username' => 'aziz_mashhur', 'followers_count' => 500]);
+        $friend = User::factory()->create(['username' => 'aziz_dost']);
+        $me->following()->attach($friend->id, ['created_at' => now()]);
+
+        $this->actingAs($me)->getJson('/compose/users?q=aziz')->assertOk()
+            ->assertJsonPath('users.0.username', 'aziz_dost')
+            ->assertJsonPath('users.1.username', 'aziz_mashhur');
+
+        auth()->logout();
+        $this->get('/compose/users?q=aziz')->assertRedirect(); // faqat tizimga kirganlar uchun
     }
 }

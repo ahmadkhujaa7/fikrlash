@@ -86,6 +86,7 @@ return [
             'gravity' => 1.5,
             'interest' => 0.6,
             'followed_author' => 0.8,
+            'verified_author' => 0.15, // tasdiqlangan muallifga kichik ustunlik
             'seen_penalty' => 0.25,
             'ai_quality' => 0.3,
         ],

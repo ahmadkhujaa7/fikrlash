@@ -11,7 +11,7 @@
         </a>
         <div class="min-w-0 flex-1">
             <div class="flex items-baseline gap-1.5 text-sm leading-tight">
-                <a href="{{ $comment->user->profileUrl() }}" class="font-semibold hover:underline">{{ $comment->user->name }}</a>
+                <a href="{{ $comment->user->profileUrl() }}" class="inline-flex items-center gap-1 font-semibold hover:underline">{{ $comment->user->name }}<x-verified :user="$comment->user" size="xs" /></a>
                 <span class="truncate text-muted">{{ '@'.$comment->user->username }}</span>
                 <time class="shrink-0 text-muted" datetime="{{ $comment->created_at->toIso8601String() }}" title="{{ Time::full($comment->created_at) }}">{{ Time::short($comment->created_at) }}</time>
             </div>

@@ -32,7 +32,7 @@
                         <a href="{{ $n->actor->profileUrl() }}" class="relative z-10 mb-1 inline-block"><x-avatar :user="$n->actor" size="xs" /></a>
                     @endif
                     <p class="text-[15px] leading-snug">
-                        @if ($n->actor)<span class="font-semibold">{{ $n->actor->name }}</span>@endif
+                        @if ($n->actor)<span class="font-semibold">{{ $n->actor->name }}</span><x-verified :user="$n->actor" size="xs" class="ml-0.5" />@endif
                         {{ $p['text'] }}
                     </p>
                     @if ($p['excerpt'])

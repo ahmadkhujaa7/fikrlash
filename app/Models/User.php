@@ -52,6 +52,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         return [
             'phone_verified_at' => 'datetime',
+            'verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'last_active_at' => 'datetime',
             'suspended_until' => 'datetime',
@@ -117,6 +118,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     }
 
     // ---- Helpers ----
+
+    /** Tasdiqlangan akkaunt (admin bergan belgi). */
+    public function isVerified(): bool
+    {
+        return $this->verified_at !== null;
+    }
 
     public function isAdmin(): bool
     {

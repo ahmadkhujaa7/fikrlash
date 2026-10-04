@@ -26,7 +26,10 @@
             </div>
         </div>
 
-        <h1 class="display mt-5 !text-[2.25rem] !leading-[1.1]">{{ $user->name }}</h1>
+        <h1 class="display mt-5 !text-[2.25rem] !leading-[1.1]">{{ $user->name }}@if ($user->isVerified())<x-verified :user="$user" size="lg" class="ml-2 !align-[0.05em]" />@endif</h1>
+        @if ($user->isVerified())
+            <p class="mt-1.5 inline-flex items-center gap-1.5 text-[13px] text-lapis">Tasdiqlangan akkaunt</p>
+        @endif
         <p class="mt-1 text-[15px] text-muted">{{ '@'.$user->username }}</p>
 
         @if ($user->bio)

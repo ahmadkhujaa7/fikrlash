@@ -40,7 +40,7 @@
                     <li class="flex items-center gap-3">
                         <a href="{{ $person->profileUrl() }}" tabindex="-1" aria-hidden="true"><x-avatar :user="$person" size="sm" /></a>
                         <a href="{{ $person->profileUrl() }}" class="min-w-0 flex-1">
-                            <span class="block truncate text-sm font-medium hover:underline">{{ $person->name }}</span>
+                            <span class="flex items-center gap-1 text-sm font-medium hover:underline"><span class="truncate">{{ $person->name }}</span><x-verified :user="$person" size="xs" /></span>
                             <span class="block truncate text-[13px] text-muted">{{ $person->followers_count }} obunachi</span>
                         </a>
                         @auth
@@ -57,6 +57,6 @@
         <a href="{{ route('terms') }}" class="hover:text-ink">Shartlar</a>
         <a href="{{ route('privacy') }}" class="hover:text-ink">Maxfiylik</a>
         <a href="{{ route('docs.api') }}" class="hover:text-ink">API</a>
-        <span>© {{ now()->year }} Fikrlash.uz</span>
+        <span>© {{ now()->year }} {{ \App\Support\Branding::name() }}</span>
     </footer>
 </div>

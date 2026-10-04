@@ -19,7 +19,7 @@
 
 <header class="sticky top-0 z-30 bg-canvas/80 backdrop-blur-lg backdrop-saturate-150">
     <div class="mx-auto flex h-16 max-w-[1080px] items-center gap-6 px-4 sm:px-6 xl:max-w-[1280px]">
-        <a href="{{ route('home') }}" aria-label="Fikrlash.uz bosh sahifa"><x-logo /></a>
+        <a href="{{ route('home') }}" aria-label="{{ \App\Support\Branding::name() }} — bosh sahifa"><x-logo /></a>
 
         @unless (request()->routeIs('search'))
             {{-- Tezkor qidiruv: yozish bilan takliflar chiqadi; Enter — to‘liq natijalar sahifasi --}}
@@ -53,7 +53,7 @@
                 <x-dropdown label="Akkaunt menyusi">
                     <x-slot:trigger class="!p-1"><x-avatar :user="$me" size="xs" /></x-slot:trigger>
                     <div class="border-b border-line px-4 pb-3 pt-2">
-                        <p class="truncate text-sm font-medium text-ink">{{ $me->name }}</p>
+                        <p class="flex items-center gap-1 text-sm font-medium text-ink"><span class="truncate">{{ $me->name }}</span><x-verified :user="$me" size="xs" /></p>
                         <p class="truncate text-[13px] text-muted">{{ '@'.$me->username }}</p>
                     </div>
                     <div class="py-1">

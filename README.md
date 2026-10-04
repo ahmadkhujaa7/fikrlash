@@ -367,6 +367,15 @@ Har bir kategoriya, teg va muallif uchun `lift = ((score + k·μ) / (exposures +
 
 Mavzular (kategoriyalar) faqat tizim ichida ishlatiladi: AI har bir postga mavzu belgilaydi, algoritm shu orqali didni o‘rganadi, admin panelda statistika ko‘rinadi. Foydalanuvchi interfeysida, API va sitemap'da mavzular yo‘q.
 
+### Tasdiqlangan akkauntlar, teglar va brending
+
+- **Tasdiqlangan belgisi** (`users.verified_at`, `verified_by`): admin panelda foydalanuvchi qatoridagi “Tasdiqlash” amali yoki bir nechtasini birdan (bulk). Belgi lentada, post va izohlarda, profilda, qidiruv va takliflarda, bildirishnomalarda, API'da (`is_verified`) ko‘rinadi. Tasdiqlangan mualliflar qidiruvda birinchi va tavsiyada kichik ustunlikka ega. Har bir o‘zgarish audit log'ga yoziladi, foydalanuvchiga bildirishnoma boradi. Ismga ✓ kabi belgilar yozib soxtalashtirib bo‘lmaydi.
+- **Admin foydalanuvchi yaratadi:** Foydalanuvchilar → “Yangi”. Telefon, parol, rol, holat va tasdiq belgisi bir formada; telefon tasdiqlangan hisoblanadi.
+- **Teglar:** foydalanuvchi matnda `#so‘z` yozadi yoki “+ Teg qo‘shish” maydonidan mavjud tegni tanlaydi / yangisini yaratadi (ko‘pi bilan 5 ta). `#` va `@` yozilganda takliflar chiqadi (`/compose/tags`, `/compose/users`).
+- **Yozish sahifasi:** qoralama brauzerda avtomatik saqlanadi, rasmni sudrab tashlash va Ctrl+V, “Ko‘rinishi” (oldindan ko‘rish), so‘z soni va o‘qish vaqti, belgilar halqasi, Ctrl+Enter.
+- **Brending:** Tizim sozlamalari → Brending: sayt nomi, logo (yorug‘ va tungi rejim uchun), favicon. Logo yuklanmasa — standart “fikrlash.” so‘z belgisi. Fayllar `storage/app/public/branding` da (`php artisan storage:link` kerak).
+- **Kun savoli:** Tizim sozlamalari → Bosh sahifa. Lenta tepasida chiqadi va yozishga undaydi.
+
 ### Qidiruv
 
 Qidiruv real vaqtda ishlaydi: foydalanuvchi yozishni to‘xtatgach (250 ms) natijalar orqa fonda yangilanadi, sahifa qayta yuklanmaydi va URL o‘zgaradi (`/search/live`). Sarlavhadagi qidiruv maydoni yozish bilan odamlar, teglar va fikrlar bo‘yicha tezkor takliflarni ko‘rsatadi (`/search/suggest`, ↑/↓ bilan tanlash, Esc — yopish, Enter — to‘liq natijalar). Eski so‘rovlar bekor qilinadi (AbortController), limit — daqiqasiga 150 so‘rov.

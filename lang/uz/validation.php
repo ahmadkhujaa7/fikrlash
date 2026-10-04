@@ -49,12 +49,17 @@ return [
         'uncompromised' => 'Bu :attribute ma’lumotlar sizib chiqishida uchragan. Boshqasini tanlang.',
     ],
     'regex' => ':attribute formati noto‘g‘ri.',
+    'not_regex' => ':attribute ichida ruxsat etilmagan belgi bor.',
     'required' => ':attribute to‘ldirilishi shart.',
     'required_if' => ':attribute to‘ldirilishi shart.',
     'string' => ':attribute matn bo‘lishi kerak.',
     'unique' => 'Bu :attribute allaqachon band.',
     'uploaded' => ':attribute yuklanmadi. Fayl hajmini tekshiring.',
     'url' => ':attribute to‘g‘ri havola bo‘lishi kerak.',
+
+    'custom' => [
+        'name' => ['not_regex' => 'Ismda ✓ kabi belgilar bo‘lishi mumkin emas — tasdiqlangan belgisini faqat admin beradi.'],
+    ],
 
     'attributes' => [
         'name' => 'Ism',

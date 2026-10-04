@@ -35,13 +35,17 @@
             <x-avatar :user="$author" :size="$detail ? 'md' : 'sm'" />
         </a>
         <div class="flex min-w-0 flex-1 {{ $detail ? 'flex-col' : 'flex-col sm:flex-row sm:items-baseline sm:gap-2' }}">
-            <a href="{{ $author->profileUrl() }}" class="truncate text-sm font-medium text-ink hover:underline">{{ $author->name }}</a>
+            <a href="{{ $author->profileUrl() }}" class="flex min-w-0 items-center gap-1 text-sm font-medium text-ink hover:underline"><span class="truncate">{{ $author->name }}</span><x-verified :user="$author" /></a>
             @if ($detail)
                 <span class="meta">{{ '@'.$author->username }}</span>
             @else
                 <a href="{{ $url }}" class="meta shrink-0 hover:text-ink">
                     <time datetime="{{ $time->toIso8601String() }}" title="{{ Time::full($time) }}">{{ Time::short($time) }}</time>
                 </a>
+                @if ($post->isLong())
+                    {{-- Uzun post: taxminiy o‘qish vaqti --}}
+                    <span class="meta hidden shrink-0 sm:inline">{{ max(1, (int) round(str_word_count(\Illuminate\Support\Str::ascii($post->content)) / 180)) }} daqiqalik o‘qish</span>
+                @endif
             @endif
         </div>
 

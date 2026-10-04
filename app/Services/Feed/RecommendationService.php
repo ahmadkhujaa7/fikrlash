@@ -72,6 +72,7 @@ class RecommendationService
         $fw = config('fikrlash.taste.feature_weights');
         $profile = $this->taste->profile($user->id);
         $followed = array_flip($this->follows->followingIds($user));
+        $verified = User::query()->whereIn('id', $candidates->pluck('user_id')->unique())->whereNotNull('verified_at')->pluck('id')->flip()->all();
 
         $views = PostView::query()->where('user_id', $user->id)->whereIn('post_id', $candidates->pluck('id'))
             ->get(['post_id', 'dismissed_at'])->keyBy('post_id');
@@ -80,7 +81,7 @@ class RecommendationService
 
         $scored = $candidates
             ->reject(fn (Post $post) => $views->get($post->id)?->dismissed_at !== null)
-            ->map(function (Post $post) use ($w, $fw, $profile, $followed, $views, $tags) {
+            ->map(function (Post $post) use ($w, $fw, $profile, $followed, $verified, $views, $tags) {
                 $score = $this->scores->hot($post);
 
                 $score *= ($profile['category'][$post->category_id] ?? 1.0) ** $fw['category'];
@@ -89,6 +90,9 @@ class RecommendationService
 
                 if (isset($followed[$post->user_id])) {
                     $score *= 1 + $w['followed_author'];
+                }
+                if (isset($verified[$post->user_id])) {
+                    $score *= 1 + $w['verified_author'];
                 }
                 if ($post->ai_score !== null) {
                     $score *= 1 + $w['ai_quality'] * (($post->ai_score - 50) / 50);

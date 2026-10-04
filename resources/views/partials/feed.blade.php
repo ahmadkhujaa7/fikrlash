@@ -17,5 +17,10 @@
         <x-spinner x-show="loading" />
         <button x-show="failed" x-cloak type="button" class="btn btn-secondary btn-sm" @click="load()">Qayta yuklash</button>
     </div>
+    @if ($posts->isNotEmpty() && isset($endText))
+        <p x-show="!next" x-cloak class="flex items-center justify-center gap-3 px-6 py-10 text-center text-[13px] text-muted">
+            <span class="h-px w-8 bg-line-strong"></span>{{ $endText }}<span class="h-px w-8 bg-line-strong"></span>
+        </p>
+    @endif
     <noscript>{{ $posts->links() }}</noscript>
 </div>

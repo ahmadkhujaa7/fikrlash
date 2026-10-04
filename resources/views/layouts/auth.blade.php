@@ -42,7 +42,7 @@
             <p class="font-serif text-[2.6rem] font-medium leading-[1.12] tracking-[-0.02em]">{{ $quote }}</p>
             <p class="mt-6 font-serif text-xl italic text-white/70">{{ $tail }}</p>
             <figcaption class="mt-10 flex items-center gap-3 text-[13px] text-white/60">
-                <span class="h-px w-8 bg-white/30"></span> Kunning fikri, Fikrlash.uz
+                <span class="h-px w-8 bg-white/30"></span> Kunning fikri, {{ \App\Support\Branding::name() }}
             </figcaption>
         </figure>
     </aside>

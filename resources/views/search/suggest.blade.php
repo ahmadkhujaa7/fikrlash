@@ -11,7 +11,7 @@
             @foreach ($users as $person)
                 <a href="{{ $person->profileUrl() }}" data-suggest class="flex items-center gap-3 px-4 py-2 hover:bg-sunken focus:bg-sunken focus:outline-none">
                     <x-avatar :user="$person" size="xs" />
-                    <span class="min-w-0 flex-1 truncate text-sm"><span class="font-medium text-ink">{{ $person->name }}</span> <span class="text-muted">{{ '@'.$person->username }}</span></span>
+                    <span class="min-w-0 flex-1 truncate text-sm"><span class="font-medium text-ink">{{ $person->name }}</span><x-verified :user="$person" size="xs" class="ml-1" /> <span class="text-muted">{{ '@'.$person->username }}</span></span>
                 </a>
             @endforeach
         @endif
@@ -31,7 +31,7 @@
             @foreach ($posts as $post)
                 <a href="{{ route('posts.show', $post) }}" data-suggest class="block px-4 py-2 hover:bg-sunken focus:bg-sunken focus:outline-none">
                     <span class="line-clamp-2 font-serif text-[0.975rem] leading-snug text-ink">{{ Str::limit(preg_replace('/\s+/u', ' ', $post->content), 140) }}</span>
-                    <span class="mt-0.5 block text-[12px] text-muted">{{ $post->user->name }}</span>
+                    <span class="mt-0.5 flex items-center gap-1 text-[12px] text-muted">{{ $post->user->name }}<x-verified :user="$post->user" size="xs" /></span>
                 </a>
             @endforeach
         @endif

@@ -61,6 +61,8 @@ class SearchService
 
         return User::query()->visible()
             ->where(fn (Builder $b) => $b->where('username', 'like', $q.'%')->orWhere('name', 'like', '%'.$q.'%'))
+            // Tasdiqlangan akkauntlar qidiruvda birinchi.
+            ->orderByRaw('verified_at IS NULL')
             ->orderByDesc('followers_count')
             ->limit($limit)
             ->get();
