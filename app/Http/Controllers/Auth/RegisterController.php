@@ -8,13 +8,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\VerifyCodeRequest;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\Auth\OtpService;
 use App\Services\Auth\RegistrationService;
 use App\Services\Security\LoginTracker;
+use App\Services\Sms\LogSmsProvider;
 use App\Support\PhoneNumber;
+use App\Support\ValidationRules;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class RegisterController extends Controller
@@ -23,9 +28,48 @@ class RegisterController extends Controller
 
     public function __construct(private RegistrationService $registration, private OtpService $otp) {}
 
-    public function create(): View
+    /** 1-bosqich: ma'lumotlar. "Raqamni o‘zgartirish" dan qaytilsa — oldin kiritilganlar to‘ldirib qo‘yiladi. */
+    public function create(Request $request): View
     {
-        return view('auth.register', ['registrationOpen' => Setting::read('registration_open')]);
+        $pending = $request->boolean('edit') ? $this->registration->pending($request->session()->get(self::SESSION_KEY)) : null;
+
+        return view('auth.register', [
+            'registrationOpen' => Setting::read('registration_open'),
+            'prefill' => $pending ? [
+                'name' => $pending['name'],
+                'username' => $pending['username'],
+                'phone' => PhoneNumber::format($pending['phone']),
+            ] : [],
+        ]);
+    }
+
+    /** Yozish paytida tekshiruv: username bandmi, telefon allaqachon ro‘yxatdan o‘tganmi. */
+    public function check(Request $request): JsonResponse
+    {
+        $field = $request->query('field');
+        $value = trim((string) $request->query('value', ''));
+
+        if ($field === 'username') {
+            $value = mb_strtolower(ltrim($value, '@'));
+            $validator = Validator::make(['username' => $value], ['username' => ValidationRules::username()], (new RegisterRequest)->messages());
+
+            return response()->json($validator->fails()
+                ? ['ok' => false, 'message' => $validator->errors()->first('username')]
+                : ['ok' => true, 'message' => 'Bo‘sh — fikrlash.uz/@'.$value]);
+        }
+
+        if ($field === 'phone') {
+            $phone = PhoneNumber::normalize($value);
+            if (! $phone) {
+                return response()->json(['ok' => false, 'message' => 'Raqam to‘liq emas: 9 ta raqam kerak (90 123 45 67).']);
+            }
+
+            return response()->json(User::withTrashed()->where('phone', $phone)->exists()
+                ? ['ok' => false, 'message' => 'Bu raqam allaqachon ro‘yxatdan o‘tgan. Kirish sahifasidan foydalaning.', 'login' => true]
+                : ['ok' => true, 'message' => 'Shu raqamga tasdiqlash kodi yuboriladi.']);
+        }
+
+        return response()->json(['ok' => false], 422);
     }
 
     public function store(RegisterRequest $request): RedirectResponse
@@ -52,6 +96,8 @@ class RegisterController extends Controller
 
         return view('auth.verify', [
             'maskedPhone' => PhoneNumber::mask($pending['phone']),
+            'devCode' => LogSmsProvider::lastCode($pending['phone']),
+            'changeUrl' => route('register', ['edit' => 1]),
             'resendIn' => $this->otp->secondsUntilResend($pending['phone'], OtpPurpose::Register),
             'action' => route('register.verify'),
             'resendAction' => route('register.resend'),

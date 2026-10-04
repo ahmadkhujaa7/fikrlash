@@ -114,6 +114,125 @@ Alpine.data('infinite', (next) => ({
 }));
 
 /* ---------- Post yozish formasi ---------- */
+/* ---------- Ro‘yxatdan o‘tish: 1-bosqich (ma'lumotlar) ---------- */
+const LATIN = { 'sh': 'sh', 'ch': 'ch', 'o‘': 'o', 'g‘': 'g', 'oʻ': 'o', 'gʻ': 'g', "o'": 'o', "g'": 'g' };
+
+Alpine.data('registerForm', ({ checkUrl, usernameTouched }) => ({
+    usernameTouched,
+    password: '',
+    showPassword: false,
+    terms: false,
+    submitting: false,
+    phoneTaken: false,
+    status: { username: null, phone: null },
+    messages: { username: '', phone: '' },
+    _timers: {},
+
+    init() {
+        if (this.$refs.username.value) this.check('username', this.$refs.username.value);
+        const phone = document.getElementById('phone');
+        if (phone?.value) this.check('phone', phone.value);
+    },
+    get strength() {
+        const p = this.password;
+        if (!p) return 0;
+        let s = p.length >= 8 ? 1 : 0;
+        if (s && /[a-zA-Z]/.test(p) && /\d/.test(p)) s++;
+        if (s > 1 && p.length >= 12) s++;
+        if (s > 1 && (/[^a-zA-Z0-9]/.test(p) || (/[a-z]/.test(p) && /[A-Z]/.test(p)))) s++;
+        return Math.max(1, Math.min(4, s));
+    },
+    get strengthLabel() {
+        if (!this.password) return 'Kamida 8 belgi: harf va raqam bo‘lsin.';
+        return ['', 'Juda oddiy — kamida 8 belgi, harf va raqam', 'Yaxshi', 'Kuchli', 'Juda kuchli'][this.strength];
+    },
+    /** Ismdan username taklif qilish (foydalanuvchi o‘zi yozmaguncha). */
+    suggestUsername(name) {
+        if (this.usernameTouched) return;
+        let s = name.toLowerCase();
+        for (const [from, to] of Object.entries(LATIN)) s = s.split(from).join(to);
+        s = s.normalize('NFKD').replace(/[^a-z0-9\s_]/g, '').trim().replace(/\s+/g, '_').slice(0, 30);
+        this.$refs.username.value = s;
+        if (s.length >= 3) this.check('username', s);
+    },
+    formatPhone(value) {
+        let d = value.replace(/\D/g, '');
+        if (d.startsWith('998') && d.length > 9) d = d.slice(3);
+        d = d.slice(0, 9);
+        return [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean).join(' ');
+    },
+    check(field, value) {
+        clearTimeout(this._timers[field]);
+        const raw = field === 'phone' ? value.replace(/\D/g, '') : value;
+        if ((field === 'username' && raw.length < 3) || (field === 'phone' && raw.length < 9)) {
+            this.status[field] = null;
+            this.messages[field] = '';
+            this.phoneTaken = false;
+            return;
+        }
+        this.status[field] = 'checking';
+        this._timers[field] = setTimeout(async () => {
+            try {
+                const res = await fetch(`${checkUrl}?${new URLSearchParams({ field, value })}`, { headers: { Accept: 'application/json' } });
+                const data = await res.json();
+                this.status[field] = data.ok ? 'ok' : 'bad';
+                this.messages[field] = data.message ?? '';
+                if (field === 'phone') this.phoneTaken = !!data.login;
+            } catch {
+                this.status[field] = null;
+            }
+        }, 350);
+    },
+}));
+
+/* ---------- Ro‘yxatdan o‘tish: 2-bosqich (SMS kod, 6 katak) ---------- */
+Alpine.data('otpInput', () => ({
+    digits: ['', '', '', '', '', ''],
+    submitting: false,
+    get code() {
+        return this.digits.join('');
+    },
+    init() {
+        this.$nextTick(() => this.focus(0));
+    },
+    focus(i) {
+        this.$root.querySelector(`[data-otp="${Math.max(0, Math.min(5, i))}"]`)?.focus();
+    },
+    fill(from, text) {
+        const chars = text.replace(/\D/g, '').slice(0, 6 - from).split('');
+        chars.forEach((ch, k) => (this.digits[from + k] = ch));
+        this.focus(from + chars.length);
+        this.autoSubmit();
+    },
+    onInput(i, event) {
+        const value = event.target.value.replace(/\D/g, '');
+        // SMS'dan avtomatik to‘ldirish yoki tez yozishda bir katakka bir nechta raqam tushadi — taqsimlaymiz.
+        if (value.length > 1) {
+            this.digits[i] = '';
+            this.fill(i, value);
+            return;
+        }
+        this.digits[i] = value;
+        if (value) this.focus(i + 1);
+        this.autoSubmit();
+    },
+    onBackspace(i, event) {
+        if (!this.digits[i] && i > 0) {
+            event.preventDefault();
+            this.digits[i - 1] = '';
+            this.focus(i - 1);
+        }
+    },
+    paste(event) {
+        this.fill(0, event.clipboardData?.getData('text') ?? '');
+    },
+    autoSubmit() {
+        if (this.code.length === 6 && !this.submitting) {
+            this.$nextTick(() => this.$root.requestSubmit());
+        }
+    },
+}));
+
 /* ---------- Post yozish ---------- */
 const WORD = "[\\p{L}\\p{N}_‘’ʻʼ']";
 // Kursor oldidagi "#so‘z" yoki "@user" — takliflar shu bo‘lak uchun chiqadi.

@@ -15,6 +15,11 @@ class RegisterRequest extends FormRequest
             'username' => mb_strtolower(trim((string) $this->input('username'), " \t\n\r\0\x0B@")),
             'phone' => PhoneNumber::normalize($this->input('phone')) ?? $this->input('phone'),
         ]);
+
+        // Veb-formada parol bitta maydonda ("ko‘rsatish" tugmasi bilan) — takrorlash maydoni bo‘lmasa, o‘zi bilan tenglashtiriladi.
+        if (! $this->has('password_confirmation')) {
+            $this->merge(['password_confirmation' => $this->input('password')]);
+        }
     }
 
     public function rules(): array

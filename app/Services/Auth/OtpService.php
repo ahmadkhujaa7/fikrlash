@@ -59,7 +59,13 @@ class OtpService
                 'ip_address' => $ip,
             ]);
 
-            SendOtpJob::dispatch($phone, $code)->afterCommit();
+            // Log drayveri (lokal ishlab chiqish): navbat ishchisi ishlamasa ham kod darhol logga va
+            // tasdiqlash sahifasidagi "sinov rejimi" yozuviga tushadi. Haqiqiy SMS — navbat orqali.
+            if (config('sms.driver') === 'log') {
+                DB::afterCommit(fn () => SendOtpJob::dispatchSync($phone, $code));
+            } else {
+                SendOtpJob::dispatch($phone, $code)->afterCommit();
+            }
         });
     }
 

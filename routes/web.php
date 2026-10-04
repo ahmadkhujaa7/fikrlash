@@ -24,6 +24,7 @@ Route::get('/feed', [FeedController::class, 'page'])->name('feed.page');
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'create'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:register');
+    Route::get('/register/check', [RegisterController::class, 'check'])->middleware('throttle:search-live')->name('register.check');
     Route::get('/register/verify', [RegisterController::class, 'verifyForm'])->name('register.verify');
     Route::post('/register/verify', [RegisterController::class, 'verify'])->middleware('throttle:otp-verify');
     Route::post('/register/resend', [RegisterController::class, 'resend'])->name('register.resend')->middleware('throttle:otp-send');

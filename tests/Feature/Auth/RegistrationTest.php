@@ -107,6 +107,49 @@ class RegistrationTest extends TestCase
         $this->assertEmpty($this->sms()->messages);
     }
 
+    public function test_single_password_field_is_enough(): void
+    {
+        $data = $this->data;
+        unset($data['password_confirmation']);
+
+        $this->post('/register', $data)->assertRedirect(route('register.verify'));
+        $this->assertNotNull($this->sms()->lastCodeFor('+998901234567'));
+    }
+
+    public function test_live_check_endpoint(): void
+    {
+        User::factory()->create(['username' => 'band', 'phone' => '+998901111111']);
+
+        $this->getJson('/register/check?field=username&value=band')->assertOk()->assertJson(['ok' => false]);
+        $this->getJson('/register/check?field=username&value=@Yangi_nom')->assertOk()->assertJson(['ok' => true]);
+        $this->getJson('/register/check?field=username&value=admin')->assertJson(['ok' => false]);
+        $this->getJson('/register/check?field=phone&value=90 111 11 11')->assertJson(['ok' => false, 'login' => true]);
+        $this->getJson('/register/check?field=phone&value=90 222 33 44')->assertJson(['ok' => true]);
+        $this->getJson('/register/check?field=phone&value=12')->assertJson(['ok' => false]);
+        $this->getJson('/register/check?field=boshqa&value=x')->assertStatus(422);
+    }
+
+    public function test_step_two_shows_masked_phone_and_change_link_prefills_step_one(): void
+    {
+        $this->post('/register', $this->data);
+
+        $this->get(route('register.verify'))
+            ->assertOk()
+            ->assertSee('Raqamni o‘zgartirish', false)
+            ->assertDontSee('901234567');
+
+        $this->get(route('register', ['edit' => 1]))
+            ->assertOk()
+            ->assertSee('Aziz Karimov')
+            ->assertSee('aziz_k')
+            ->assertSee('90 123 45 67');
+    }
+
+    public function test_verify_page_requires_step_one(): void
+    {
+        $this->get(route('register.verify'))->assertRedirect(route('register'));
+    }
+
     public function test_registration_can_be_closed_by_admin(): void
     {
         Setting::write('registration_open', false);
