@@ -99,13 +99,28 @@ return [
         'max_read_seconds' => 1800,
     ],
 
-    'interests' => [
-        'like' => 2.0,
-        'save' => 3.0,
-        'comment' => 3.0,
-        'view' => 0.3,
-        'read' => 1.0,
-        'follow_category' => 10.0,
+    /*
+     * Tavsiya algoritmi: foydalanuvchi didi faqat xatti-harakatdan o‘rganiladi.
+     * signals — har bir harakat qancha "javob" balli beradi (exposure — 1 ko‘rsatish).
+     */
+    'taste' => [
+        'signals' => [
+            'open' => 1.5,          // postni ochib o‘qidi
+            'dwell' => 0.6,         // lentada 4+ soniya to‘xtab o‘qidi
+            'dwell_long' => 1.2,    // lentada 12+ soniya
+            'read' => 1.0,          // post sahifasida 20+ soniya
+            'like' => 2.0,
+            'comment' => 3.0,
+            'save' => 3.0,
+            'follow' => 5.0,        // muallifga obuna bo‘ldi (faqat muallif vazni)
+        ],
+        'not_interested' => 8.0,    // "Qiziq emas": shuncha "javobsiz ko‘rsatish" qo‘shiladi
+        'prior_rate' => 0.25,       // o‘rtacha javob darajasi (Bayes smoothing markazi)
+        'prior_strength' => 4.0,    // kam ma'lumotda profil o‘rtachaga yaqin turadi
+        'lift_min' => 0.15,
+        'lift_max' => 4.0,
+        'feature_weights' => ['category' => 1.0, 'tag' => 0.7, 'author' => 0.9],
+        'explore_every' => 6,       // har 6-o‘rinda yangi mavzudan post (didni kengaytirish)
         'weekly_decay' => 0.9,
     ],
 

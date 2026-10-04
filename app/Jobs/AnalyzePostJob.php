@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Services\Ai\AiAnalysisResult;
 use App\Services\Ai\AiManager;
 use App\Services\Moderation\ModerationService;
+use App\Services\Social\TagService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -213,5 +214,10 @@ class AnalyzePostJob implements ShouldBeUnique, ShouldQueue
         }
 
         $post->saveQuietly();
+
+        $keywords = $r?->keywords ?? $a?->keywords ?? [];
+        if ($keywords !== []) {
+            app(TagService::class)->attachFromKeywords($post, $keywords);
+        }
     }
 }

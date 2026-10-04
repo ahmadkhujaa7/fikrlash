@@ -6,22 +6,25 @@ use App\Models\Post;
 use App\Models\PostView;
 use App\Models\User;
 use App\Services\Social\FollowService;
-use App\Services\Social\InterestService;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Pagination\Paginator as SimplePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
- * "Siz uchun" lentasi — rule-based tavsiya.
+ * "Siz uchun" lentasi — foydalanuvchi didiga moslashadigan tavsiya.
  *
- * 1) Nomzodlar: so‘nggi N kundagi eng yuqori "hot" ballli postlar + eng yangi postlar.
- * 2) Har bir nomzod shaxsiy signallar bilan baholanadi:
- *      qiziqish (kategoriya vazni), obuna bo‘lingan muallif, AI sifat bahosi,
- *      allaqachon ko‘rilgan postlar pastga tushadi.
+ * Foydalanuvchi hech narsa tanlamaydi: did TasteService orqali xatti-harakatdan o‘rganiladi
+ * (nima ko‘rsatildi va nimaga javob berdi — ochdi, o‘qidi, like, izoh, saqladi, "qiziq emas").
+ *
+ * 1) Nomzodlar: so‘nggi N kundagi "hot" postlar + eng yangilari (+ kontent kam bo‘lsa eskilari).
+ * 2) Ball = hot × kategoriya lift × teglar lift × muallif lift × obuna × AI sifat × (ko‘rilgan bo‘lsa jarima).
+ *    Lift'lar daraja ko‘rsatkichi orqali qo‘shiladi: score × lift^w (w — xususiyat vazni).
  * 3) Xilma-xillik: bitta muallifdan ketma-ket ko‘p post chiqmaydi.
- * Natija (ID ro‘yxati) keshda saqlanadi — sahifalash barqaror va arzon.
- * Kelajakda shu klass ichidagi rank() ML model bilan almashtiriladi.
+ * 4) Kashfiyot: har N-o‘ringa foydalanuvchi hali kam ko‘rgan mavzudan post qo‘yiladi —
+ *    aks holda lenta bir xil mavzuga "qamalib" qoladi va yangi qiziqish paydo bo‘lmaydi.
+ * "Qiziq emas" bosilgan postlar umuman chiqmaydi. Natija (ID ro‘yxati) keshda saqlanadi.
  */
 class RecommendationService
 {
@@ -29,7 +32,7 @@ class RecommendationService
 
     public function __construct(
         private ScoreCalculator $scores,
-        private InterestService $interests,
+        private TasteService $taste,
         private FollowService $follows,
     ) {}
 
@@ -66,29 +69,54 @@ class RecommendationService
         }
 
         $w = config('fikrlash.feed.weights');
-        $interests = $this->interests->normalizedMap($user->id);
+        $fw = config('fikrlash.taste.feature_weights');
+        $profile = $this->taste->profile($user->id);
         $followed = array_flip($this->follows->followingIds($user));
-        $seen = PostView::query()->where('user_id', $user->id)
-            ->whereIn('post_id', $candidates->pluck('id'))->pluck('post_id')->flip()->all();
 
-        $scored = $candidates->map(function (Post $post) use ($w, $interests, $followed, $seen) {
-            $score = $this->scores->hot($post);
-            $score *= 1 + $w['interest'] * ($interests[$post->category_id] ?? 0);
+        $views = PostView::query()->where('user_id', $user->id)->whereIn('post_id', $candidates->pluck('id'))
+            ->get(['post_id', 'dismissed_at'])->keyBy('post_id');
+        $tags = DB::table('post_tag')->whereIn('post_id', $candidates->pluck('id'))->get(['post_id', 'tag_id'])
+            ->groupBy('post_id')->map(fn ($rows) => $rows->pluck('tag_id')->all());
 
-            if (isset($followed[$post->user_id])) {
-                $score *= 1 + $w['followed_author'];
-            }
-            if ($post->ai_score !== null) {
-                $score *= 1 + $w['ai_quality'] * (($post->ai_score - 50) / 50);
-            }
-            if (isset($seen[$post->id])) {
-                $score *= $w['seen_penalty'];
-            }
+        $scored = $candidates
+            ->reject(fn (Post $post) => $views->get($post->id)?->dismissed_at !== null)
+            ->map(function (Post $post) use ($w, $fw, $profile, $followed, $views, $tags) {
+                $score = $this->scores->hot($post);
 
-            return ['id' => $post->id, 'author' => $post->user_id, 'score' => $score];
-        })->sortByDesc('score')->values();
+                $score *= ($profile['category'][$post->category_id] ?? 1.0) ** $fw['category'];
+                $score *= $this->tagLift($tags->get($post->id, []), $profile['tag']) ** $fw['tag'];
+                $score *= ($profile['author'][$post->user_id] ?? 1.0) ** $fw['author'];
 
-        return $this->diversify($scored)->take((int) config('fikrlash.feed.ranked_size'))->all();
+                if (isset($followed[$post->user_id])) {
+                    $score *= 1 + $w['followed_author'];
+                }
+                if ($post->ai_score !== null) {
+                    $score *= 1 + $w['ai_quality'] * (($post->ai_score - 50) / 50);
+                }
+                if ($views->has($post->id)) {
+                    $score *= $w['seen_penalty'];
+                }
+
+                // Kashfiyot uchun: foydalanuvchi bu mavzuni deyarli ko‘rmagan.
+                $unexplored = ! $profile['empty'] && ($profile['seen'][$post->category_id] ?? 0) < 2;
+
+                return ['id' => $post->id, 'author' => $post->user_id, 'score' => $score, 'explore' => $unexplored, 'hot' => $this->scores->hot($post)];
+            })->sortByDesc('score')->values();
+
+        $ordered = $this->explore($this->diversify($scored));
+
+        return array_slice($ordered, 0, (int) config('fikrlash.feed.ranked_size'));
+    }
+
+    /** Teglar bo‘yicha qiziqish: eng kuchli ijobiy va eng kuchli salbiy signal o‘rtasidagi muvozanat. */
+    private function tagLift(array $tagIds, array $tagProfile): float
+    {
+        $lifts = array_values(array_intersect_key($tagProfile, array_flip($tagIds)));
+        if ($lifts === []) {
+            return 1.0;
+        }
+
+        return sqrt(max($lifts) * min($lifts));
     }
 
     private function candidates(User $user): Collection
@@ -112,8 +140,12 @@ class RecommendationService
         return $all->values();
     }
 
-    /** Bitta muallifdan ketma-ket ko‘p post chiqmasligi uchun qayta tartiblash. */
-    private function diversify(Collection $scored): Collection
+    /**
+     * Bitta muallifdan ketma-ket ko‘p post chiqmasligi uchun qayta tartiblash.
+     *
+     * @return list<array{id: int, author: int, score: float, explore: bool, hot: float}>
+     */
+    private function diversify(Collection $scored): array
     {
         $result = [];
         $deferred = [];
@@ -126,15 +158,45 @@ class RecommendationService
 
                 continue;
             }
-            $result[] = $item['id'];
+            $result[] = $item;
             $recent[] = $item['author'];
         }
 
-        foreach ($deferred as $item) {
-            $result[] = $item['id'];
+        return [...$result, ...$deferred];
+    }
+
+    /**
+     * Har N-o‘ringa kam ko‘rilgan mavzudagi eng mashhur postni ko‘tarish.
+     *
+     * @return list<int>
+     */
+    private function explore(array $items): array
+    {
+        $every = (int) config('fikrlash.taste.explore_every');
+        $pool = collect($items)->where('explore', true)->sortByDesc('hot')->pluck('id')->all();
+        if ($every < 2 || $pool === []) {
+            return array_column($items, 'id');
         }
 
-        return collect($result);
+        $placed = [];
+        $rest = array_column($items, 'id');
+        $result = [];
+        while ($rest !== [] || $pool !== []) {
+            if ((count($result) + 1) % $every === 0 && $pool !== []) {
+                $id = array_shift($pool);
+            } else {
+                $id = array_shift($rest) ?? array_shift($pool);
+            }
+            if ($id === null) {
+                break;
+            }
+            if (! isset($placed[$id])) {
+                $placed[$id] = true;
+                $result[] = $id;
+            }
+        }
+
+        return $result;
     }
 
     private function cacheKey(User $user): string

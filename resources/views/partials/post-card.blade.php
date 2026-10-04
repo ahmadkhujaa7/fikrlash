@@ -15,11 +15,20 @@
     $url = route('posts.show', $post);
     $time = $post->published_at ?? $post->created_at;
     $heart = 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z';
+    $canDismiss = ! $detail && $me && ! $post->isOwnedBy($me) && $post->isPublished();
     $bookmark = 'M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z';
 @endphp
 <article id="post-{{ $post->id }}" data-item
          @if ($post->isPublished()) data-track-view data-post-id="{{ $post->id }}" @endif
-         class="px-4 sm:px-6 {{ $detail ? 'pt-8 pb-6' : 'py-6' }}">
+         @if ($canDismiss) x-data="dismissable('{{ route('api.v1.posts.not-interested', $post) }}')" @endif
+         class="px-4 sm:px-6 {{ $detail ? 'pt-8 pb-6' : 'py-5 sm:py-6' }}">
+    @if ($canDismiss)
+        <div x-show="dismissed" x-cloak class="flex items-center gap-3 rounded-2xl bg-sunken px-4 py-3.5 text-[13px] text-ink-soft">
+            <x-ico name="eye-slash" size="size-4" class="text-muted" />
+            <span>Yashirildi. Bunday postlarni kamroq ko‘rasiz.</span>
+        </div>
+    @endif
+    <div @if ($canDismiss) x-show="!dismissed" @endif>
 
     <header class="flex items-center gap-3">
         <a href="{{ $author->profileUrl() }}" class="shrink-0" tabindex="-1" aria-hidden="true">
@@ -39,9 +48,6 @@
         @if ($post->visibility === PostVisibility::Followers)
             <span class="text-muted" title="Faqat obunachilar ko‘radi"><x-ico name="lock" size="size-4" /></span>
         @endif
-        @if ($post->category && ! $detail)
-            <a href="{{ route('categories.show', $post->category) }}" class="hidden shrink-0 items-center gap-1.5 rounded-full bg-sunken px-2.5 py-0.5 text-[12px] text-ink-soft hover:text-ink sm:inline-flex">{{ $post->category->name }}</a>
-        @endif
 
         <x-dropdown label="Post amallari">
             <x-slot:trigger class="-mr-2 !p-1.5"><x-ico name="dots" size="size-5" /></x-slot:trigger>
@@ -53,6 +59,9 @@
                     <x-dropdown-item icon="trash" type="submit" danger>O‘chirish</x-dropdown-item>
                 </form>
             @elseif ($me)
+                @if ($canDismiss)
+                    <x-dropdown-item icon="eye-slash" @click="open = false; dismiss()">Qiziq emas</x-dropdown-item>
+                @endif
                 <x-dropdown-item icon="flag" @click="$dispatch('report', { type: 'post', id: {{ $post->id }} }); open = false" danger>Shikoyat qilish</x-dropdown-item>
             @endif
         </x-dropdown>
@@ -140,4 +149,5 @@
             </div>
         </footer>
     @endif
+    </div>
 </article>

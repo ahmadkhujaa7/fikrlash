@@ -7,12 +7,13 @@ use App\Events\CommentCreated;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\Feed\TasteService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CommentService
 {
-    public function __construct(private InterestService $interests) {}
+    public function __construct(private TasteService $taste) {}
 
     public function create(User $author, Post $post, string $content, ?int $parentId = null): Comment
     {
@@ -46,7 +47,7 @@ class CommentService
         });
 
         $post->comments_count++;
-        $this->interests->bump($author->id, $post->category_id, (float) config('fikrlash.interests.comment'));
+        $this->taste->engage($author->id, $post, 'comment');
         CommentCreated::dispatch($comment);
 
         return $comment;

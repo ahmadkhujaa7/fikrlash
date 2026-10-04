@@ -28,6 +28,9 @@ class PostController extends Controller
 
         if ($post->isPublished()) {
             $views->record($post, $viewer, $request->ip().'|'.$request->userAgent());
+            if ($viewer) {
+                $views->recordOpen($post, $viewer);
+            }
         }
 
         return view('posts.show', [

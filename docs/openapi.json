@@ -1470,7 +1470,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Ko‘rishlar va to‘xtash vaqti foydalanuvchi didini o‘rgatadi."
       }
     },
     "/posts/{post}/read": {
@@ -2770,120 +2771,6 @@
         ]
       }
     },
-    "/categories/{category}/follow": {
-      "post": {
-        "tags": [
-          "Categories"
-        ],
-        "summary": "Kategoriyaga qiziqish bildirish",
-        "responses": {
-          "200": {
-            "description": "Muvaffaqiyatli",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Envelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validatsiya xatosi",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit"
-          },
-          "401": {
-            "description": "Token yo‘q yoki noto‘g‘ri",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "category",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Categories"
-        ],
-        "summary": "Qiziqishni olib tashlash",
-        "responses": {
-          "200": {
-            "description": "Muvaffaqiyatli",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Envelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validatsiya xatosi",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit"
-          },
-          "401": {
-            "description": "Token yo‘q yoki noto‘g‘ri",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "category",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
     "/tags/{slug}/posts": {
       "get": {
         "tags": [
@@ -3057,6 +2944,65 @@
             }
           }
         }
+      }
+    },
+    "/posts/{post}/not-interested": {
+      "post": {
+        "tags": [
+          "Interactions"
+        ],
+        "summary": "Qiziq emas",
+        "responses": {
+          "200": {
+            "description": "Muvaffaqiyatli",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validatsiya xatosi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit"
+          },
+          "401": {
+            "description": "Token yo‘q yoki noto‘g‘ri",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "post",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "description": "Post lentadan yashiriladi; shu kategoriya, teglar va muallifdagi postlar kamroq tavsiya qilinadi."
       }
     }
   }

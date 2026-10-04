@@ -1,7 +1,8 @@
 @php
     $me = auth()->user();
     $announcement = \App\Models\Setting::read('announcement');
-    $is = fn (string ...$patterns) => request()->routeIs(...$patterns) ? 'page' : 'false';
+    // Yozish sahifalarida mobil pastki menyu yashiriladi — klaviatura va asboblar paneli uchun joy.
+    $writing = request()->routeIs('posts.create', 'posts.edit');
 @endphp
 <!DOCTYPE html>
 <html lang="uz">
@@ -17,13 +18,8 @@
 @endif
 
 <header class="sticky top-0 z-30 bg-canvas/80 backdrop-blur-lg backdrop-saturate-150">
-    <div class="mx-auto flex h-16 max-w-[1080px] items-center gap-6 px-4 sm:px-6">
+    <div class="mx-auto flex h-16 max-w-[1080px] items-center gap-6 px-4 sm:px-6 xl:max-w-[1280px]">
         <a href="{{ route('home') }}" aria-label="Fikrlash.uz bosh sahifa"><x-logo /></a>
-
-        <nav class="hidden items-center gap-1 md:flex" aria-label="Asosiy menyu">
-            <a href="{{ route('home') }}" class="nav-link" aria-current="{{ $is('home') }}">Lenta</a>
-            <a href="{{ route('categories.index') }}" class="nav-link" aria-current="{{ $is('categories.*') }}">Mavzular</a>
-        </nav>
 
         @unless (request()->routeIs('search'))
             <form action="{{ route('search') }}" method="GET" role="search" class="relative ml-auto hidden w-full max-w-[260px] md:block" x-data
@@ -36,10 +32,9 @@
         @endunless
 
         <div class="{{ request()->routeIs('search') ? 'ml-auto' : 'ml-auto md:ml-0' }} flex items-center gap-1.5">
-            <a href="{{ route('search') }}" class="rounded-full p-2 text-muted hover:text-ink md:hidden" aria-label="Qidiruv"><x-ico name="search" /></a>
             @auth
-                <a href="{{ route('posts.create') }}" class="btn btn-primary btn-sm mr-1 hidden md:inline-flex"><x-ico name="pencil" size="size-4" /> Yozish</a>
-                <a href="{{ route('notifications.index') }}" class="relative hidden rounded-full p-2 text-muted hover:text-ink md:block" aria-label="Bildirishnomalar"
+                <a href="{{ route('posts.create') }}" class="btn btn-primary btn-sm mr-1 hidden md:inline-flex xl:hidden"><x-ico name="pencil" size="size-4" /> Yozish</a>
+                <a href="{{ route('notifications.index') }}" class="relative hidden rounded-full p-2 text-muted hover:text-ink md:block xl:hidden" aria-label="Bildirishnomalar"
                    x-data="unreadBadge({{ $unreadNotifications }})">
                     <x-ico name="bell" />
                     <span x-show="count > 0" x-cloak class="absolute right-1.5 top-1.5 size-2 rounded-full bg-lapis ring-2 ring-paper"></span>
@@ -53,7 +48,6 @@
                     <div class="py-1">
                         <x-dropdown-item icon="user" :href="route('profile.show', $me->username)">Profil</x-dropdown-item>
                         <x-dropdown-item icon="bookmark" :href="route('saved.index')">Saqlanganlar</x-dropdown-item>
-                        <x-dropdown-item icon="document" :href="route('posts.drafts')">Qoralamalar</x-dropdown-item>
                         <x-dropdown-item icon="settings" :href="route('settings.profile')">Sozlamalar</x-dropdown-item>
                         @if ($me->isAdmin())
                             <x-dropdown-item icon="shield" href="/admin">Admin panel</x-dropdown-item>
@@ -72,15 +66,22 @@
     </div>
 </header>
 
-<div class="mx-auto max-w-[1080px] sm:px-4 lg:grid lg:grid-cols-[minmax(0,660px)_1fr] lg:gap-10 lg:px-6">
-    <main id="main" class="min-w-0 pb-28 sm:pt-2 lg:pb-16">
+<div class="mx-auto max-w-[1080px] sm:px-4 lg:grid lg:grid-cols-[minmax(0,660px)_1fr] lg:gap-10 lg:px-6 xl:max-w-[1280px] xl:grid-cols-[200px_minmax(0,640px)_minmax(0,1fr)] xl:gap-8">
+    {{-- Keng ekranda: chap navigatsiya ustuni --}}
+    <aside class="hidden xl:block" aria-label="Navigatsiya">
+        <div class="sticky top-16 pt-2">
+            @include('partials.nav-rail')
+        </div>
+    </aside>
+
+    <main id="main" class="mx-auto min-w-0 max-w-[680px] {{ $writing ? 'pb-0 sm:pb-16' : 'pb-28' }} sm:pt-2 lg:mx-0 lg:max-w-none lg:pb-16">
         <div class="sheet min-h-[calc(100vh-7rem)] pb-4">
             @yield('content')
         </div>
     </main>
 
     <aside class="hidden lg:block" aria-label="Qo‘shimcha">
-        <div class="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto pb-10 pt-4 [scrollbar-width:none]">
+        <div class="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto pb-10 pt-2 [scrollbar-width:none]">
             @hasSection('sidebar')
                 @yield('sidebar')
             @else
@@ -91,10 +92,11 @@
 </div>
 
 {{-- Mobil: pastki navigatsiya --}}
+@unless ($writing)
 <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden" aria-label="Pastki menyu">
     <div class="mx-auto grid max-w-md grid-cols-5 items-center">
         <a href="{{ route('home') }}" class="flex justify-center py-3.5 {{ request()->routeIs('home') ? 'text-ink' : 'text-muted' }}" aria-label="Lenta"><x-ico name="home" size="size-6" /></a>
-        <a href="{{ route('categories.index') }}" class="flex justify-center py-3.5 {{ request()->routeIs('categories.*') ? 'text-ink' : 'text-muted' }}" aria-label="Mavzular"><x-ico name="grid" size="size-6" /></a>
+        <a href="{{ route('search') }}" class="flex justify-center py-3.5 {{ request()->routeIs('search') ? 'text-ink' : 'text-muted' }}" aria-label="Qidiruv"><x-ico name="search" size="size-6" /></a>
         <a href="{{ auth()->check() ? route('posts.create') : route('login') }}" class="mx-auto flex size-11 items-center justify-center rounded-full bg-ink text-on-ink" aria-label="Yozish"><x-ico name="plus" size="size-5" /></a>
         @auth
             <a href="{{ route('notifications.index') }}" class="relative flex justify-center py-3.5 {{ request()->routeIs('notifications.*') ? 'text-ink' : 'text-muted' }}" aria-label="Bildirishnomalar" x-data="unreadBadge({{ $unreadNotifications }})">
@@ -103,11 +105,12 @@
             </a>
             <a href="{{ route('profile.show', $me->username) }}" class="flex justify-center py-3.5" aria-label="Profil"><x-avatar :user="$me" size="xs" /></a>
         @else
-            <a href="{{ route('search') }}" class="flex justify-center py-3.5 text-muted" aria-label="Qidiruv"><x-ico name="search" size="size-6" /></a>
+            <a href="{{ route('login') }}" class="flex justify-center py-3.5 text-muted" aria-label="Bildirishnomalar"><x-ico name="bell" size="size-6" /></a>
             <a href="{{ route('login') }}" class="flex justify-center py-3.5 text-muted" aria-label="Kirish"><x-ico name="user" size="size-6" /></a>
         @endauth
     </div>
 </nav>
+@endunless
 
 @include('partials.report-modal')
 <x-toasts />

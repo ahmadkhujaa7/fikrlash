@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Social\InterestService;
+use App\Services\Feed\TasteService;
 use Illuminate\Console\Command;
 
 class DecayInterests extends Command
@@ -11,9 +11,9 @@ class DecayInterests extends Command
 
     protected $description = 'Foydalanuvchi qiziqishlari vaznini haftalik kamaytiradi';
 
-    public function handle(InterestService $interests): int
+    public function handle(TasteService $taste): int
     {
-        $interests->decay();
+        $taste->decay();
 
         return self::SUCCESS;
     }

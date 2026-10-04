@@ -42,4 +42,42 @@ class TagService
 
         $post->tags()->sync(Tag::query()->whereIn('slug', array_keys($tags))->pluck('id'));
     }
+
+    /**
+     * AI kalit so‘zlaridan teglar qo‘shish (foydalanuvchi teg yozmasa ham tavsiya tizimi postni "tushunadi").
+     * Faqat bitta so‘zli, 3–30 harfli kalit so‘zlar; mavjud teglar o‘chirilmaydi; postda jami 4 tadan oshmaydi.
+     *
+     * @param  list<string>  $keywords
+     */
+    public function attachFromKeywords(Post $post, array $keywords, int $maxTotal = 4): void
+    {
+        $existing = $post->tags()->pluck('tags.id')->all();
+        $room = $maxTotal - count($existing);
+        if ($room <= 0) {
+            return;
+        }
+
+        $tags = [];
+        foreach ($keywords as $keyword) {
+            $keyword = trim($keyword);
+            $slug = TextNormalizer::tagSlug($keyword);
+            if (preg_match('/\s/u', $keyword) || mb_strlen($slug) < 3 || mb_strlen($slug) > 30) {
+                continue;
+            }
+            $tags[$slug] = $keyword;
+            if (count($tags) >= $room) {
+                break;
+            }
+        }
+        if ($tags === []) {
+            return;
+        }
+
+        $now = now();
+        Tag::query()->insertOrIgnore(array_map(
+            fn ($slug, $name) => ['slug' => $slug, 'name' => mb_substr($name, 0, 50), 'created_at' => $now, 'updated_at' => $now],
+            array_keys($tags), $tags,
+        ));
+        $post->tags()->syncWithoutDetaching(Tag::query()->whereIn('slug', array_keys($tags))->pluck('id'));
+    }
 }

@@ -17,7 +17,14 @@
 <div class="grid min-h-screen bg-paper lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
     <main id="main" class="flex flex-col px-5 py-8 sm:px-10 lg:px-16">
         <a href="{{ route('home') }}" class="self-start" aria-label="Bosh sahifa"><x-logo /></a>
-        <div class="my-auto w-full max-w-[400px] py-14">
+
+        {{-- Mobil va planshet: kunning fikri — ixcham lojuvard panel --}}
+        <figure class="girih -mx-2 mt-6 rounded-[22px] bg-lapis-deep px-5 pb-5 pt-10 text-white lg:hidden" style="--girih-opacity:.12" aria-hidden="true">
+            <p class="font-serif text-[1.35rem] font-medium leading-[1.2] tracking-[-0.01em]">{{ $quote }}</p>
+            <figcaption class="mt-3 text-[12px] text-white/60">Kunning fikri</figcaption>
+        </figure>
+
+        <div class="my-auto w-full max-w-[400px] py-10 lg:py-14">
             @yield('content')
         </div>
         <footer class="flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted">

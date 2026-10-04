@@ -7,6 +7,7 @@ use App\Jobs\AnalyzePostJob;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\Social\TagService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
@@ -132,5 +133,33 @@ class PostTest extends TestCase
             ->assertSee('<meta property="og:type" content="article">', false)
             ->assertSee('application/ld+json', false)
             ->assertDontSee('<script>alert("x")</script>', false);
+    }
+
+    public function test_composer_is_text_and_image_only_and_edit_keeps_ai_topic(): void
+    {
+        $this->seedCategories();
+        $user = User::factory()->create();
+
+        $html = $this->actingAs($user)->get('/compose')->assertOk()->getContent();
+        $this->assertStringContainsString('name="content"', $html);
+        $this->assertStringContainsString('name="image"', $html);
+        $this->assertStringNotContainsString('name="category_id"', $html);
+        $this->assertStringNotContainsString('name="tags"', $html);
+        $this->assertStringNotContainsString('name="visibility"', $html);
+
+        // Tahrirlashda faqat matn yuboriladi — AI aniqlagan mavzu va teglar saqlanib qoladi.
+        $category = Category::query()->where('slug', 'dasturlash')->first();
+        $post = Post::factory()->for($user)->create(['category_id' => $category->id, 'content' => 'Eski matn #laravel']);
+        app(TagService::class)->syncForPost($post, ['php']);
+
+        $this->actingAs($user)->put("/posts/{$post->id}", ['content' => 'Yangi matn #laravel'])->assertRedirect();
+
+        $post->refresh();
+        $this->assertSame('Yangi matn #laravel', $post->content);
+        $this->assertSame($category->id, $post->category_id);
+        $slugs = $post->tags()->pluck('slug')->all();
+        $this->assertContains('laravel', $slugs);
+        $this->assertContains('php', $slugs);
+        $this->assertLessThanOrEqual(4, count($slugs));
     }
 }

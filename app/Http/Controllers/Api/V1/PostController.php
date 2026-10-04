@@ -8,6 +8,7 @@ use App\Http\Requests\Posts\UpdatePostRequest;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
 use App\Services\Feed\FeedService;
+use App\Services\Feed\TasteService;
 use App\Services\Feed\ViewRecorder;
 use App\Services\Posts\PostService;
 use App\Services\Social\InteractionService;
@@ -90,19 +91,46 @@ class PostController extends Controller
         return ApiResponse::success(['saved' => false, 'saves_count' => $post->saves_count]);
     }
 
-    /** Ko‘rishlar to‘plami (feed'da 50% ko‘ringan kartochkalar). */
+    /**
+     * Lentadagi ko‘rishlar to‘plami.
+     * post_ids — ekranda 1.5+ soniya ko‘ringan kartochkalar; dwell — {post_id: soniya}, kartochka ustida to‘xtash vaqti.
+     */
     public function views(Request $request, ViewRecorder $views): JsonResponse
     {
-        $data = $request->validate(['post_ids' => ['required', 'array', 'max:30'], 'post_ids.*' => ['integer']]);
+        $data = $request->validate([
+            'post_ids' => ['present', 'array', 'max:30'],
+            'post_ids.*' => ['integer'],
+            'dwell' => ['sometimes', 'array', 'max:30'],
+            'dwell.*' => ['integer', 'min:0', 'max:600'],
+        ]);
         $viewer = $request->user();
         $fingerprint = $request->ip().'|'.$request->userAgent();
+        $dwell = $viewer ? array_filter($data['dwell'] ?? [], fn ($s, $id) => is_numeric($id), ARRAY_FILTER_USE_BOTH) : [];
+        $ids = array_unique([...$data['post_ids'], ...array_map('intval', array_keys($dwell))]);
 
-        $counted = Post::query()->forFeed($viewer)->whereIn('posts.id', array_unique($data['post_ids']))
-            ->get(['posts.id', 'posts.user_id', 'posts.category_id'])
+        $posts = Post::query()->forFeed($viewer)->whereIn('posts.id', $ids)
+            ->with('tags:id')->get(['posts.id', 'posts.user_id', 'posts.category_id']);
+
+        $counted = $posts->whereIn('id', $data['post_ids'])
             ->filter(fn (Post $post) => $views->record($post, $viewer, $fingerprint))
             ->count();
 
+        foreach ($posts as $post) {
+            if (isset($dwell[$post->id])) {
+                $views->recordDwell($post, $viewer, (int) $dwell[$post->id]);
+            }
+        }
+
         return ApiResponse::success(['counted' => $counted]);
+    }
+
+    /** "Qiziq emas" — post yashiriladi, shunga o‘xshash postlar kamroq chiqadi. */
+    public function notInterested(Request $request, Post $post, TasteService $taste): JsonResponse
+    {
+        $this->authorize('view', $post);
+        $taste->notInterested($request->user()->id, $post);
+
+        return ApiResponse::success(['dismissed' => true], 'Tushunarli. Bunday postlar kamroq chiqadi.');
     }
 
     /** O‘qish vaqti (soniya) — sahifadan chiqishda yuboriladi. */

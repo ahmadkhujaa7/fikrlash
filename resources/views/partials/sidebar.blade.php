@@ -2,9 +2,29 @@
     $sidebar = app(\App\Services\Feed\SidebarService::class);
     $trendingTags ??= $sidebar->trendingTags();
     $suggestedUsers ??= $sidebar->suggestedUsers(auth()->user());
-    $categories ??= \App\Models\Category::cachedActive();
+    $tasteTopics = $sidebar->tasteTopics(auth()->user());
 @endphp
 <div class="space-y-9 px-1">
+    @auth
+        {{-- Lenta qanday ishlaydi: algoritm nimani o‘rgangani ochiq ko‘rsatiladi --}}
+        <section class="rounded-2xl border border-line bg-paper p-5">
+            <h2 class="flex items-center gap-2 text-[13px] font-medium text-ink">
+                <span class="grid size-6 place-items-center rounded-full bg-lapis-soft text-lapis"><x-ico name="sparkles" size="size-3.5" /></span>
+                Lentangiz sizga moslashadi
+            </h2>
+            @if ($tasteTopics->isNotEmpty())
+                <p class="mt-3 text-[13px] leading-relaxed text-muted">Siz ko‘proq o‘qiydigan mavzular:</p>
+                <div class="mt-2.5 flex flex-wrap gap-1.5">
+                    @foreach ($tasteTopics as $topic)
+                        <a href="{{ route('categories.show', $topic) }}" class="rounded-full bg-lapis-soft px-3 py-1 text-[13px] text-lapis hover:underline">{{ $topic->name }}</a>
+                    @endforeach
+                </div>
+            @else
+                <p class="mt-3 text-[13px] leading-relaxed text-muted">Nimani o‘qisangiz, yoqtirsangiz va saqlasangiz — tizim shundan o‘rganadi. Qiziq bo‘lmagan postni <span class="text-ink-soft">“Qiziq emas”</span> deb belgilang.</p>
+            @endif
+        </section>
+    @endauth
+
     @if ($trendingTags->isNotEmpty())
         <section>
             <h2 class="rail-title">Shu hafta muhokama qilinmoqda</h2>
@@ -41,15 +61,6 @@
             </ul>
         </section>
     @endif
-
-    <section>
-        <h2 class="rail-title">Mavzular</h2>
-        <div class="flex flex-wrap gap-2">
-            @foreach ($categories as $category)
-                <a href="{{ route('categories.show', $category) }}" class="chip">{{ $category->name }}</a>
-            @endforeach
-        </div>
-    </section>
 
     <footer class="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px] text-muted">
         <a href="{{ route('about') }}" class="hover:text-ink">Loyiha haqida</a>

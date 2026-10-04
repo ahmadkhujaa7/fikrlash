@@ -32,6 +32,9 @@ class AiAnalysisTest extends TestCase
         $this->assertSame('dasturlash', $post->ai_category);
         // Kategoriya tanlanmagan edi — AI taklifi qo‘yildi.
         $this->assertSame(Category::query()->where('slug', 'dasturlash')->value('id'), $post->category_id);
+        // Foydalanuvchi teg yozmagan — AI kalit so‘zlari teg bo‘ldi (tavsiya tizimi postni "tushunadi").
+        $this->assertGreaterThan(0, $post->tags()->count());
+        $this->assertLessThanOrEqual(4, $post->tags()->count());
     }
 
     public function test_identical_content_is_not_analyzed_twice(): void

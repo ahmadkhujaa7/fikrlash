@@ -4,7 +4,6 @@ namespace App\Services\Feed;
 
 use App\Models\Post;
 use App\Models\User;
-use App\Services\Social\InterestService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -19,7 +18,7 @@ class ViewRecorder
 {
     private const BUFFER_KEY = 'post_views_buffer';
 
-    public function __construct(private InterestService $interests) {}
+    public function __construct(private TasteService $taste) {}
 
     public function record(Post $post, ?User $viewer, string $fingerprint): bool
     {
@@ -43,7 +42,7 @@ class ViewRecorder
                 ['user_id', 'post_id'],
                 ['last_viewed_at'],
             );
-            $this->interests->bump($viewer->id, $post->category_id, (float) config('fikrlash.interests.view'));
+            $this->taste->expose($viewer->id, $post);
         }
 
         return true;
@@ -65,9 +64,31 @@ class ViewRecorder
                 'last_viewed_at' => now(),
             ]);
 
-        // Uzoq o‘qilgan post — kuchli qiziqish signali.
-        if ($seconds >= 20) {
-            $this->interests->bump($viewer->id, $post->category_id, (float) config('fikrlash.interests.read'));
+        // Uzoq o‘qilgan post — kuchli qiziqish signali (bir postdan kuniga bir marta).
+        if ($seconds >= 20 && Cache::add("taste:read:{$viewer->id}:{$post->id}", 1, now()->addDay())) {
+            $this->taste->engage($viewer->id, $post, 'read');
+        }
+    }
+
+    /** Post sahifasi ochildi — foydalanuvchi postni bosib kirdi (kuniga bir marta hisoblanadi). */
+    public function recordOpen(Post $post, User $viewer): void
+    {
+        if ($post->user_id !== $viewer->id && Cache::add("taste:open:{$viewer->id}:{$post->id}", 1, now()->addDay())) {
+            $this->taste->engage($viewer->id, $post, 'open');
+        }
+    }
+
+    /**
+     * Lentada kartochka ustida to‘xtash vaqti (soniya). Tez o‘tkazib yuborilgan post — signal yo‘q
+     * (exposure allaqachon yozilgan, demak nisbat pasayadi); to‘xtab o‘qilgan post — ijobiy signal.
+     */
+    public function recordDwell(Post $post, User $viewer, int $seconds): void
+    {
+        if ($post->user_id === $viewer->id || $seconds < 4) {
+            return;
+        }
+        if (Cache::add("taste:dwell:{$viewer->id}:{$post->id}", 1, now()->addDay())) {
+            $this->taste->engage($viewer->id, $post, $seconds >= 12 ? 'dwell_long' : 'dwell');
         }
     }
 

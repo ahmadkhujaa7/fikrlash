@@ -9,11 +9,13 @@ class CreatePostRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        // Veb-formada faqat matn va rasm bor; kategoriya/teglar faqat yuborilganda o‘zgaradi
+        // (aks holda tahrirlash AI aniqlagan kategoriya va teglarni o‘chirib yuborardi).
+        $this->merge(array_filter([
             'content' => trim(str_replace("\r\n", "\n", (string) $this->input('content'))),
-            'tags' => $this->normalizeTags($this->input('tags')),
-            'category_id' => $this->input('category_id') ?: null,
-        ]);
+            'tags' => $this->has('tags') ? $this->normalizeTags($this->input('tags')) : null,
+            'category_id' => $this->has('category_id') ? ($this->input('category_id') ?: null) : null,
+        ], fn ($v, $k) => $k === 'content' || $this->has($k), ARRAY_FILTER_USE_BOTH));
     }
 
     public function rules(): array

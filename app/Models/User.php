@@ -109,11 +109,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasMany(Notification::class);
     }
 
-    public function interests(): HasMany
-    {
-        return $this->hasMany(UserInterest::class);
-    }
-
     // ---- Scopes ----
 
     public function scopeVisible(Builder $query): Builder

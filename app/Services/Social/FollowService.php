@@ -5,11 +5,14 @@ namespace App\Services\Social;
 use App\Events\UserFollowed;
 use App\Models\Follow;
 use App\Models\User;
+use App\Services\Feed\TasteService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class FollowService
 {
+    public function __construct(private TasteService $taste) {}
+
     public function follow(User $follower, User $target): bool
     {
         if ($follower->is($target)) {
@@ -32,6 +35,7 @@ class FollowService
         if ($added) {
             $target->followers_count++;
             $follower->following_count++;
+            $this->taste->followAuthor($follower->id, $target->id);
             UserFollowed::dispatch($follower, $target);
         }
 

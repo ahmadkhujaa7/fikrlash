@@ -1,6 +1,7 @@
 {{--
-  Post yozish formasi — platformaning yuragi.
-  $post (tahrirlashda), $categories, $compact (bosh sahifada — fokus bo‘lganda ochiladi).
+  Post yozish — iloji boricha sodda: matn va (ixtiyoriy) rasm.
+  Mavzu, teglar va kimga ko‘rsatish — tizim o‘zi aniqlaydi (AI tahlili + tavsiya algoritmi).
+  $post (tahrirlashda), $compact (bosh sahifada — fokus bo‘lganda ochiladi).
 --}}
 @php
     $post = $post ?? null;
@@ -9,83 +10,68 @@
     $content = old('content', $post?->content ?? '');
     $prompts = ['Bugun nimani o‘ylayapsiz?', 'Qanday g‘oya xayolingizdan ketmayapti?', 'Bugun nimani o‘rgandingiz?', 'Qaysi savol sizni o‘ylantiryapti?'];
     $isDraft = $post && $post->status === \App\Enums\PostStatus::Draft;
-    $tagsValue = old('tags') ? (is_array(old('tags')) ? implode(', ', old('tags')) : old('tags')) : $post?->tags?->pluck('name')->implode(', ');
+    $me = auth()->user();
 @endphp
 <form method="POST" enctype="multipart/form-data"
       action="{{ $post ? route('posts.update', $post) : route('posts.store') }}"
       x-data="composer({ max: {{ $max }}, content: @js($content) })"
       @if ($compact) x-init="expanded = expanded || {{ $errors->any() ? 'true' : 'false' }}" @endif
-      class="px-4 sm:px-6 {{ $compact ? 'border-b border-line pb-5 pt-6' : 'py-8' }}">
+      class="{{ $compact ? 'border-b border-line px-4 pb-4 pt-5 sm:px-6' : 'flex min-h-[calc(100dvh-8.6rem)] flex-col px-4 pt-6 sm:px-6 md:min-h-0' }}">
     @csrf
     @if ($post) @method('PUT') @endif
+    @if ($isDraft)<input type="hidden" name="publish" value="1">@endif
 
-    @if ($compact)<div class="flex gap-3.5"><x-avatar :user="auth()->user()" size="sm" class="mt-0.5" /><div class="min-w-0 flex-1">@endif
-    <label for="content-{{ $post?->id ?? 'new' }}" class="sr-only">Post matni</label>
-    <textarea id="content-{{ $post?->id ?? 'new' }}" name="content" x-model="content" x-ref="text"
-              @focus="expanded = true" @input="grow($el)" x-init="grow($el)"
-              rows="{{ $compact ? 1 : 6 }}" maxlength="{{ $max + 500 }}"
-              placeholder="{{ $prompts[now()->dayOfYear % count($prompts)] }}"
-              class="block w-full resize-none border-0 bg-transparent p-0 font-serif tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0 {{ $compact ? 'min-h-9 pt-1 text-[1.375rem] leading-[1.35]' : 'min-h-48 text-[1.75rem] leading-[1.3]' }}"
-              @if (! $compact) autofocus @endif>{{ $content }}</textarea>
-    @error('content')<p class="field-error">{{ $message }}</p>@enderror
+    <div class="flex flex-1 gap-3.5">
+        <div class="{{ $compact ? '' : 'hidden sm:block' }} shrink-0 pt-0.5"><x-avatar :user="$me" :size="$compact ? 'sm' : 'md'" /></div>
+        <div class="min-w-0 flex-1">
+            <label for="content-{{ $post?->id ?? 'new' }}" class="sr-only">Post matni</label>
+            <textarea id="content-{{ $post?->id ?? 'new' }}" name="content" x-model="content" x-ref="text"
+                      @focus="expanded = true" @input="grow($el)" x-init="grow($el)"
+                      @keydown.ctrl.enter="$el.form.requestSubmit()" @keydown.meta.enter="$el.form.requestSubmit()"
+                      rows="{{ $compact ? 1 : 5 }}" maxlength="{{ $max + 500 }}"
+                      placeholder="{{ $prompts[now()->dayOfYear % count($prompts)] }}"
+                      class="block w-full resize-none border-0 bg-transparent p-0 font-serif tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0 {{ $compact ? 'min-h-9 pt-1 text-[1.3rem] leading-[1.4]' : 'min-h-40 text-[1.5rem] leading-[1.42] sm:text-[1.75rem] sm:leading-[1.35]' }}"
+                      @if (! $compact) autofocus @endif>{{ $content }}</textarea>
+            @error('content')<p class="field-error">{{ $message }}</p>@enderror
 
-    <template x-if="preview">
-        <div class="relative mt-5 overflow-hidden rounded-2xl bg-sunken">
-            <img :src="preview" alt="Tanlangan rasm" class="max-h-80 w-full object-cover">
-            <button type="button" @click="clearImage" class="absolute right-3 top-3 rounded-full bg-ink/70 p-1.5 text-white hover:bg-ink" aria-label="Rasmni olib tashlash">
-                <x-ico name="x" size="size-4" />
-            </button>
+            <template x-if="preview">
+                <div class="relative mt-4 overflow-hidden rounded-2xl bg-sunken">
+                    <img :src="preview" alt="Tanlangan rasm" class="max-h-80 w-full object-cover">
+                    <button type="button" @click="clearImage" class="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full bg-ink/70 text-white backdrop-blur hover:bg-ink" aria-label="Rasmni olib tashlash">
+                        <x-ico name="x" size="size-4" />
+                    </button>
+                </div>
+            </template>
+            @if ($post?->image_path)
+                <label class="mt-4 flex items-center gap-4 text-sm" x-show="!preview">
+                    <img src="{{ $post->imageUrl() }}" alt="" class="size-16 rounded-xl object-cover">
+                    <span class="flex-1 text-muted">Joriy rasm</span>
+                    <span class="flex items-center gap-2"><input type="checkbox" name="remove_image" value="1" class="accent-[var(--anor)]"> Olib tashlash</span>
+                </label>
+            @endif
+            @error('image')<p class="field-error">{{ $message }}</p>@enderror
         </div>
-    </template>
-    @if ($post?->image_path)
-        <label class="mt-5 flex items-center gap-4 text-sm" x-show="!preview">
-            <img src="{{ $post->imageUrl() }}" alt="" class="size-16 rounded-xl object-cover">
-            <span class="flex-1 text-muted">Joriy rasm</span>
-            <span class="flex items-center gap-2"><input type="checkbox" name="remove_image" value="1" class="accent-[var(--anor)]"> Olib tashlash</span>
-        </label>
-    @endif
-    @error('image')<p class="field-error">{{ $message }}</p>@enderror
+    </div>
 
-    <div x-show="expanded" @if ($compact) x-cloak @endif class="mt-6 space-y-4">
-        <div class="flex flex-wrap gap-2">
-            <select name="category_id" class="field !w-auto !rounded-full !py-2 !pl-4 !pr-9 text-[13px]" aria-label="Mavzu">
-                <option value="">Mavzu: AI tanlaydi</option>
-                @foreach ($categories as $category)
-                    <option value="{{ $category->id }}" @selected((string) old('category_id', $post?->category_id) === (string) $category->id)>{{ $category->name }}</option>
-                @endforeach
-            </select>
-            <select name="visibility" class="field !w-auto !rounded-full !py-2 !pl-4 !pr-9 text-[13px]" aria-label="Kim ko‘radi">
-                <option value="public" @selected(old('visibility', $post?->visibility?->value) !== 'followers')>Hamma ko‘radi</option>
-                <option value="followers" @selected(old('visibility', $post?->visibility?->value) === 'followers')>Faqat obunachilar</option>
-            </select>
-            <input type="text" name="tags" class="field !w-auto min-w-0 flex-1 !rounded-full !py-2 !px-4 text-[13px]" maxlength="200"
-                   value="{{ $tagsValue }}" placeholder="Teglar: ai, biznes, kitob" aria-label="Teglar">
-        </div>
-        @error('tags')<p class="field-error">{{ $message }}</p>@enderror
-        @error('tags.*')<p class="field-error">{{ $message }}</p>@enderror
-
-        <div class="flex items-center gap-2 border-t border-line pt-4">
-            <label class="cursor-pointer rounded-full p-2 text-muted transition-colors hover:bg-sunken hover:text-ink" title="Rasm qo‘shish (JPG, PNG, WEBP, 5 MB gacha)">
+    {{-- Asboblar: rasm, belgilar hisobi, chop etish. To‘liq sahifada mobil ekranda pastga yopishadi. --}}
+    <div x-show="expanded" @if ($compact) x-cloak x-transition.opacity.duration.150ms @endif
+         class="{{ $compact ? 'mt-3 sm:pl-[3.125rem]' : 'sticky bottom-0 -mx-4 mt-6 border-t border-line bg-paper/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:-mx-6 sm:rounded-b-[27px] sm:px-6' }}">
+        <div class="flex items-center gap-2">
+            <label class="grid size-10 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-sunken hover:text-lapis" title="Rasm qo‘shish (JPG, PNG, WEBP, 5 MB gacha)">
                 <x-ico name="photo" />
                 <span class="sr-only">Rasm qo‘shish</span>
                 <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="sr-only" x-ref="image" @change="pick">
             </label>
 
             <span class="flex-1"></span>
-            <span class="text-[13px] tabular-nums" :class="tooLong ? 'font-medium text-anor' : (left < 200 ? 'text-amber' : 'text-muted')"
-                  x-show="content.length > 0" x-text="left"></span>
 
-            @if (! $post || $isDraft)
-                <button type="submit" name="draft" value="1" class="btn btn-ghost btn-sm" :disabled="!content.trim() || tooLong">Qoralama</button>
-            @endif
-            @if ($isDraft)
-                <input type="hidden" name="publish" value="1" x-ref="publish" disabled>
-            @endif
-            <button type="submit" class="btn btn-primary" :disabled="!content.trim() || tooLong"
-                    @if ($isDraft) @click="$refs.publish.disabled = false" @endif>
+            {{-- Qolgan belgilar: limitga yaqinlashganda ko‘rinadi --}}
+            <span class="text-[13px] tabular-nums" :class="tooLong ? 'font-medium text-anor' : (left < 200 ? 'text-amber' : 'text-muted')"
+                  x-show="left < 300" x-cloak x-text="left"></span>
+
+            <button type="submit" class="btn btn-primary min-w-[6.5rem]" :disabled="!content.trim() || tooLong">
                 {{ $post && $post->isPublished() ? 'Saqlash' : 'Chop etish' }}
             </button>
         </div>
     </div>
-    @if ($compact)</div></div>@endif
 </form>

@@ -5,6 +5,14 @@
 
     @auth
         @include('partials.composer', ['compact' => true])
+        {{-- Yangi foydalanuvchiga (yon panel ko‘rinmaydigan ekranlarda): lenta qanday o‘rganishini tushuntirish --}}
+        @if (app(\App\Services\Feed\TasteService::class)->profile(auth()->id())['empty'])
+            <div class="flex gap-3 border-b border-line bg-lapis-soft/50 px-4 py-3.5 text-[13px] leading-relaxed text-ink-soft sm:px-6 lg:hidden" x-data="{ open: true }" x-show="open">
+                <x-ico name="sparkles" size="size-4" class="mt-0.5 text-lapis" />
+                <p class="flex-1">Lenta siz o‘qigan, yoqtirgan va saqlagan postlardan o‘rganadi. Qiziq bo‘lmasa — post menyusida <span class="font-medium text-ink">“Qiziq emas”</span>.</p>
+                <button type="button" class="-m-1 grid size-7 shrink-0 place-items-center rounded-full text-muted hover:text-ink" @click="open = false" aria-label="Yopish"><x-ico name="x" size="size-4" /></button>
+            </div>
+        @endif
     @else
         {{-- Mehmon uchun: lojuvard koshin paneli — platformaning yuzi --}}
         <section class="girih m-2 rounded-[22px] bg-lapis-deep px-6 pb-9 pt-16 text-white sm:px-9 sm:pb-10 sm:pt-24" style="--girih-opacity:.13">
@@ -18,18 +26,5 @@
         </section>
     @endauth
 
-    <div class="sticky top-16 z-20 flex items-center justify-between gap-3 border-b border-line bg-paper/90 px-4 py-3 backdrop-blur-md sm:px-6">
-        <nav class="seg" aria-label="Lenta turi">
-            <a href="{{ route('home') }}" @if ($tab === 'for-you') aria-current="page" @endif>Siz uchun</a>
-            <a href="{{ route('home', ['tab' => 'latest']) }}" @if ($tab === 'latest') aria-current="page" @endif>Eng yangi</a>
-            @auth
-                <a href="{{ route('home', ['tab' => 'following']) }}" @if ($tab === 'following') aria-current="page" @endif>Obunalar</a>
-            @endauth
-        </nav>
-    </div>
-
-    @include('partials.feed', [
-        'emptyTitle' => $tab === 'following' ? 'Obunalaringizda hali post yo‘q' : 'Hali hech kim yozmadi',
-        'emptyText' => $tab === 'following' ? 'Qiziqarli odamlarga obuna bo‘ling — ularning fikrlari shu yerda chiqadi.' : 'Birinchi fikrni siz yozing.',
-    ])
+    @include('partials.feed', ['emptyTitle' => 'Hali hech kim yozmadi', 'emptyText' => 'Birinchi fikrni siz yozing.'])
 @endsection

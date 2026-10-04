@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\PostLike;
 use App\Models\SavedPost;
 use App\Models\User;
+use App\Services\Feed\TasteService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class InteractionService
 {
-    public function __construct(private InterestService $interests) {}
+    public function __construct(private TasteService $taste) {}
 
     public function likePost(User $user, Post $post): bool
     {
@@ -32,7 +33,7 @@ class InteractionService
 
         if ($added) {
             $post->likes_count++;
-            $this->interests->bump($user->id, $post->category_id, (float) config('fikrlash.interests.like'));
+            $this->taste->engage($user->id, $post, 'like');
             PostLiked::dispatch($post, $user);
         }
 
@@ -70,7 +71,7 @@ class InteractionService
 
         if ($added) {
             $post->saves_count++;
-            $this->interests->bump($user->id, $post->category_id, (float) config('fikrlash.interests.save'));
+            $this->taste->engage($user->id, $post, 'save');
         }
 
         return $added;

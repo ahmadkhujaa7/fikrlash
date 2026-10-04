@@ -233,13 +233,13 @@ window.sharePost = async (url, text) => {
 };
 
 /* ---------- Kategoriyaga obuna ---------- */
-Alpine.data('categoryFollow', ({ following, url }) => ({
-    following,
-    async flip() {
+/* ---------- "Qiziq emas" — post yashiriladi, algoritm shunga o‘xshash postlarni kamroq ko‘rsatadi ---------- */
+Alpine.data('dismissable', (url) => ({
+    dismissed: false,
+    async dismiss() {
         try {
-            const data = await api(this.following ? 'DELETE' : 'POST', url);
-            this.following = data.following;
-            toast(this.following ? 'Kategoriya qiziqishlaringizga qo‘shildi.' : 'Kategoriya olib tashlandi.', 'success');
+            await api('POST', url);
+            this.dismissed = true;
         } catch (e) {
             toast(e.message, 'error');
         }

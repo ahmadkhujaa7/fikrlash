@@ -68,6 +68,7 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
             Route::delete('comments/{comment}/like', [V1\CommentController::class, 'unlike'])->name('comments.unlike');
         });
         Route::post('posts/{post}/read', [V1\PostController::class, 'readTime'])->middleware('throttle:views')->name('posts.read');
+        Route::post('posts/{post}/not-interested', [V1\PostController::class, 'notInterested'])->middleware('throttle:interactions')->name('posts.not-interested');
 
         Route::post('posts/{post}/comments', [V1\CommentController::class, 'store'])->middleware('throttle:comments');
         Route::patch('comments/{comment}', [V1\CommentController::class, 'update']);
@@ -76,8 +77,6 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
         Route::middleware('throttle:follows')->group(function () {
             Route::post('users/{user}/follow', [V1\UserController::class, 'follow'])->name('users.follow');
             Route::delete('users/{user}/follow', [V1\UserController::class, 'unfollow'])->name('users.unfollow');
-            Route::post('categories/{category}/follow', [V1\CategoryController::class, 'follow'])->name('categories.follow');
-            Route::delete('categories/{category}/follow', [V1\CategoryController::class, 'unfollow'])->name('categories.unfollow');
         });
 
         Route::get('notifications', [V1\NotificationController::class, 'index']);

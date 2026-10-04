@@ -1,6 +1,6 @@
 # Fikrlash.uz
 
-O‘zbek tilidagi fikr almashish platformasi: foydalanuvchilar fikr, g‘oya va savollarini yozadi, boshqalar o‘qiydi, muhokama qiladi. Postlar fon rejimida AI orqali tahlil qilinadi, "Siz uchun" lentasi qiziqishlarga moslashadi.
+O‘zbek tilidagi fikr almashish platformasi: foydalanuvchilar fikr, g‘oya va savollarini yozadi, boshqalar o‘qiydi, muhokama qiladi. Postlar fon rejimida AI orqali tahlil qilinadi, Foydalanuvchi faqat yozadi — mavzuni AI aniqlaydi, lenta esa har bir foydalanuvchining xatti-harakatidan o‘rganib, unga mos postlarni ko‘rsatadi.
 
 **Stack:** PHP 8.3+ · Laravel 12 · MySQL 8 · Redis · Blade + Alpine.js + Tailwind CSS 4 · Filament 5 (admin) · Laravel Sanctum (API)
 
@@ -111,7 +111,7 @@ config/ai.php, sms.php    provayder sozlamalari
 | API tokenlar — Sanctum, `users_tokens` jadvalida | Token SHA-256 hash ko‘rinishida saqlanadi; muddat, oxirgi foydalanish, bekor qilish tayyor |
 | Like/save/follow — `unique` indeks + `insertOrIgnore` + atomik `increment` | Race condition'da hisoblagich buzilmaydi; tungi `fikrlash:reconcile-counters` qo‘shimcha kafolat |
 | Ko‘rishlar — 30 daqiqalik dedup, muallif hisoblanmaydi, ixtiyoriy Redis buffer | Haqiqiy statistika, har refreshda DB'ga yozilmaydi |
-| "Siz uchun" — qoidalarga asoslangan reyting, natija keshlanadi | ML'siz ham yaxshi ishlaydi; `RecommendationService::rank()` keyinchalik ML bilan almashtiriladi |
+| Lenta — yashirin "did profili" (`TasteService`): kategoriya, teg va muallif bo‘yicha *ko‘rsatildi / javob berdi* nisbati, Bayes smoothing | Foydalanuvchi hech narsa sozlamaydi; e’tiborsiz qolgan mavzular o‘zi kamayadi, "Qiziq emas" darhol ta’sir qiladi, har 6-o‘rinda yangi mavzu (kashfiyot) |
 | Qidiruv — `search_text` ustuni (apostroflar olib tashlangan) + FULLTEXT | "o‘qish", "oʻqish", "o'qish" bir-birini topadi |
 | Rasmlar GD orqali WebP'ga qayta encode qilinadi | EXIF/GPS o‘chadi, zararli fayllar zararsizlanadi |
 | AI faqat signal beradi | Xavfli post moderator tekshiruviga tushadi, foydalanuvchi avtomatik jazolanmaydi |
@@ -150,8 +150,9 @@ Migratsiyalar: `database/migrations/`. Asosiy jadvallar:
 - `comments` — bir darajali javoblar (`parent_id` + `reply_to_user_id`)
 - `post_likes`, `comment_likes`, `saved_posts`, `follows` — `unique` cheklovlar bilan
 - `categories`, `tags`, `post_tag`
-- `user_interests` — tavsiya tizimi uchun kategoriya vaznlari
-- `post_views` — kim nimani ko‘rgani va o‘qish vaqti (90 kun saqlanadi)
+- `user_affinities` — foydalanuvchi didi: `kind` (category/tag/author), `score` (javoblar), `exposures` (ko‘rsatishlar); haftalik so‘nadi
+- `user_interests` — eski kategoriya vaznlari (yangi jadvalga ko‘chirilgan, endi ishlatilmaydi)
+- `post_views` — kim nimani ko‘rgani, o‘qish vaqti va "Qiziq emas" belgisi (90 kun saqlanadi)
 - `post_ai_analyses` — AI tahlil tarixi, tokenlar, xatolar
 - `notifications`, `reports`, `audit_logs`, `settings`
 
@@ -245,7 +246,7 @@ Serverda bitta cron yozuvi (`deploy/crontab`):
 | `fikrlash:reconcile-counters` | 03:10 | Hisoblagichlarni qayta hisoblash |
 | `fikrlash:prune` | 03:30 | Eski OTP, ko‘rishlar, o‘qilgan bildirishnomalar, muddati o‘tgan tokenlar |
 | `accounts:purge-deleted` | 04:00 | 30 kundan oshgan o‘chirilgan akkauntlar |
-| `interests:decay` | haftalik | Eski qiziqishlar so‘nadi |
+| `interests:decay` | haftalik | Did profili so‘nadi (eski qiziqishlar unutiladi) |
 
 Qo‘lda: `php artisan schedule:list`. Admin yaratish: `php artisan fikrlash:create-admin +998901234567`.
 
@@ -348,7 +349,23 @@ sudo crontab -u www-data deploy/crontab
 
 ## 14. Yo‘l xaritasi
 
-**MVP (tayyor):** autentifikatsiya + SMS OTP, profil, postlar (rasm, kategoriya, teg, qoralama, ko‘rinish), izoh va javoblar, like, saqlash, obuna, lenta (Siz uchun / Eng yangi / Obunalar), qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, rule-based tavsiyalar, o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
+### Tavsiya algoritmi qanday ishlaydi
+
+Foydalanuvchi mavzu, teg yoki qiziqish tanlamaydi — post yozish faqat matn va rasmdan iborat. Postning mavzusi va kalit so‘zlarini (teglar) AI aniqlaydi, lenta esa har bir foydalanuvchining xatti-harakatidan o‘rganadi:
+
+| Signal | Qayerdan | Ta’siri |
+|---|---|---|
+| Ko‘rsatildi (exposure) | Lentada kartochka 1.5 s ko‘rindi | Javob bo‘lmasa nisbat pasayadi |
+| To‘xtab o‘qidi | Kartochka 4+ s / 12+ s ekranda | +0.6 / +1.2 |
+| Ochdi | Post sahifasi | +1.5 |
+| O‘qidi | Post sahifasida 20+ s | +1.0 |
+| Like / izoh / saqlash | Tugmalar | +2 / +3 / +3 |
+| Obuna | Muallifga | muallif +5 |
+| "Qiziq emas" | Post menyusi | post yashiriladi, +8 javobsiz ko‘rsatish |
+
+Har bir kategoriya, teg va muallif uchun `lift = ((score + k·μ) / (exposures + k)) / μ` hisoblanadi (μ = 0.25, k = 4): ma’lumot kam bo‘lsa lift ≈ 1, ko‘p ko‘rsatilib e’tiborsiz qolgan narsa < 1, sevimli mavzu > 1. Post bahosi: `hot × kat.lift × teg.lift^0.7 × muallif.lift^0.9 × obuna × AI sifat × (ko‘rilgan bo‘lsa 0.25)`. Keyin bitta muallif ketma-ket ikkitadan ko‘p chiqmaydi va har 6-o‘ringa foydalanuvchi deyarli ko‘rmagan mavzudan post qo‘yiladi. Barcha koeffitsientlar `config/fikrlash.php` → `taste`.
+
+**MVP (tayyor):** autentifikatsiya + SMS OTP, profil, postlar (matn + rasm; mavzu va teglarni AI aniqlaydi), izoh va javoblar, like, saqlash, obuna, o‘rganuvchi shaxsiy lenta, qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, xatti-harakatdan o‘rganadigan tavsiyalar ("Qiziq emas", kashfiyot), o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
 
 **V2:** real-time bildirishnomalar (Laravel Reverb), Horizon, Meilisearch (Laravel Scout), kirill ↔ lotin qidiruv, haftalik dayjest, foydalanuvchini bloklash/mute, admin 2FA, rasmlar uchun CDN va bir nechta o‘lcham.
 
