@@ -97,9 +97,6 @@
     @if ($detail)
         <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
             <time class="meta" datetime="{{ $time->toIso8601String() }}">{{ Time::full($time) }}@if ($post->edited_at)<span>, tahrirlangan</span>@endif</time>
-            @if ($post->category)
-                <a href="{{ route('categories.show', $post->category) }}" class="chip">{{ $post->category->name }}</a>
-            @endif
             @if ($post->relationLoaded('tags'))
                 @foreach ($post->tags as $tag)
                     <a href="{{ route('tags.show', $tag->slug) }}" class="meta hover:text-lapis">#{{ $tag->name }}</a>

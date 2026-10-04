@@ -31,7 +31,7 @@ class PostController extends Controller
     public function show(Request $request, Post $post): JsonResponse
     {
         $this->authorize('view', $post);
-        $post->load(['user', 'category', 'tags']);
+        $post->load(['user', 'tags']);
         $this->feed->withViewerState([$post], $request->user());
 
         return ApiResponse::success(new PostResource($post));
@@ -42,7 +42,7 @@ class PostController extends Controller
         $this->authorize('create', Post::class);
         $post = $this->posts->create($request->user(), $request->postData(), $request->file('image'));
 
-        return ApiResponse::success(new PostResource($post->load(['user', 'category', 'tags'])), 'Post yaratildi.', 201);
+        return ApiResponse::success(new PostResource($post->load(['user', 'tags'])), 'Post yaratildi.', 201);
     }
 
     public function update(UpdatePostRequest $request, Post $post): JsonResponse
@@ -50,7 +50,7 @@ class PostController extends Controller
         $this->authorize('update', $post);
         $this->posts->update($post, $request->postData(), $request->file('image'));
 
-        return ApiResponse::success(new PostResource($post->fresh(['user', 'category', 'tags'])), 'Post yangilandi.');
+        return ApiResponse::success(new PostResource($post->fresh(['user', 'tags'])), 'Post yangilandi.');
     }
 
     public function destroy(Post $post): JsonResponse

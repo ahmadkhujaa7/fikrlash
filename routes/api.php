@@ -34,8 +34,6 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
     Route::get('users/{user}/posts', [V1\UserController::class, 'posts']);
     Route::get('users/{user}/followers', [V1\UserController::class, 'followers']);
     Route::get('users/{user}/following', [V1\UserController::class, 'following']);
-    Route::get('categories', [V1\CategoryController::class, 'index']);
-    Route::get('categories/{category}/posts', [V1\CategoryController::class, 'posts']);
     Route::get('tags/{slug}/posts', [V1\TagController::class, 'posts']);
     Route::get('search', V1\SearchController::class)->middleware('throttle:search');
     Route::post('views', [V1\PostController::class, 'views'])->middleware('throttle:views')->name('views');

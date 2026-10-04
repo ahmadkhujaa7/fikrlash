@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Models\Post;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 
-/** SEO: ochiq postlar va kategoriyalar xaritasi (1 soat keshlanadi). */
+/** SEO: ochiq postlar xaritasi (1 soat keshlanadi). Mavzular foydalanuvchiga ko‘rsatilmaydi. */
 class SitemapController extends Controller
 {
     private const LIMIT = 5000;
@@ -16,10 +15,6 @@ class SitemapController extends Controller
     {
         $xml = Cache::remember('sitemap.xml', now()->addHour(), function () {
             $urls = [['loc' => route('home'), 'lastmod' => now()]];
-
-            foreach (Category::cachedActive() as $category) {
-                $urls[] = ['loc' => route('categories.show', $category), 'lastmod' => null];
-            }
 
             Post::query()->forFeed(null)->where('posts.visibility', 'public')
                 ->latest('published_at')->limit(self::LIMIT)

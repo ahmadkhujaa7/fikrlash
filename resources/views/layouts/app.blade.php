@@ -22,12 +22,23 @@
         <a href="{{ route('home') }}" aria-label="Fikrlash.uz bosh sahifa"><x-logo /></a>
 
         @unless (request()->routeIs('search'))
-            <form action="{{ route('search') }}" method="GET" role="search" class="relative ml-auto hidden w-full max-w-[260px] md:block" x-data
-                  @keydown.window.slash="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) { $event.preventDefault(); $refs.q.focus() }">
-                <x-ico name="search" size="size-4" class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                <input type="search" name="q" x-ref="q" placeholder="Qidirish" aria-label="Qidirish"
+            {{-- Tezkor qidiruv: yozish bilan takliflar chiqadi; Enter — to‘liq natijalar sahifasi --}}
+            <form action="{{ route('search') }}" method="GET" role="search" class="relative ml-auto hidden w-full max-w-[300px] md:block"
+                  x-data="quickSearch('{{ route('search.suggest') }}')" @click.outside="open = false" @keydown.escape.window="close()"
+                  @keydown.window.slash="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && ! $event.target.isContentEditable) { $event.preventDefault(); $refs.q.focus() }">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+                    <x-ico name="search" size="size-4" x-show="!loading" />
+                    <x-spinner class="!size-4" x-show="loading" x-cloak />
+                </span>
+                <input type="search" name="q" x-ref="q" x-model="q" placeholder="Qidirish" aria-label="Qidirish" autocomplete="off"
+                       role="combobox" aria-autocomplete="list" aria-controls="quick-search-panel" :aria-expanded="open"
+                       @input.debounce.200ms="suggest()" @focus="q.trim().length >= 2 && (open = true)" @keydown.down.prevent="move(1)"
                        class="h-9 w-full rounded-full border border-transparent bg-ink/[0.05] pl-10 pr-9 text-sm text-ink placeholder:text-muted transition-colors focus:border-line-strong focus:bg-paper focus:outline-none">
-                <kbd class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-line-strong px-1.5 font-sans text-[11px] leading-4 text-muted">/</kbd>
+                <kbd x-show="!q" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-line-strong px-1.5 font-sans text-[11px] leading-4 text-muted">/</kbd>
+                <div id="quick-search-panel" x-show="open && html" x-cloak x-transition.opacity.duration.100ms
+                     @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                     class="absolute inset-x-0 top-11 z-40 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_16px_48px_-16px_rgb(0_0_0/0.3)]"
+                     x-html="html"></div>
             </form>
         @endunless
 

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Services\Feed\FeedService;
 use App\Services\Feed\SidebarService;
 use Illuminate\Http\Request;
@@ -19,7 +18,6 @@ class FeedController extends Controller
         return view('feed.index', [
             'tab' => $tab,
             'posts' => $this->load($request, $tab),
-            'categories' => Category::cachedActive(),
             'trendingTags' => $this->sidebar->trendingTags(),
             'suggestedUsers' => $this->sidebar->suggestedUsers($request->user()),
         ]);

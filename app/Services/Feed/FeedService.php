@@ -27,7 +27,7 @@ class FeedService
     /** Kartochka uchun kerakli bog‘lanishlar (N+1 oldini olish). */
     public function baseQuery(?User $viewer): Builder
     {
-        return Post::query()->forFeed($viewer)->with(['user', 'category']);
+        return Post::query()->forFeed($viewer)->with(['user']);
     }
 
     public function latest(?User $viewer): CursorPaginator
@@ -68,11 +68,6 @@ class FeedService
     public function byUser(User $author, ?User $viewer): CursorPaginator
     {
         return $this->cursor($this->baseQuery($viewer)->where('posts.user_id', $author->id));
-    }
-
-    public function byCategory(int $categoryId, ?User $viewer): CursorPaginator
-    {
-        return $this->cursor($this->baseQuery($viewer)->where('posts.category_id', $categoryId));
     }
 
     public function byTag(int $tagId, ?User $viewer): CursorPaginator

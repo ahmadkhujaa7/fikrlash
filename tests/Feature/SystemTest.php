@@ -50,7 +50,7 @@ class SystemTest extends TestCase
         $this->seedCategories();
         Post::factory()->create(['content' => 'Teg bilan #sinov']);
 
-        foreach (['/about', '/terms', '/privacy', '/categories', '/c/hayot', '/t/sinov', '/search', '/login', '/register', '/password/forgot', '/up'] as $url) {
+        foreach (['/about', '/terms', '/privacy', '/t/sinov', '/search', '/login', '/register', '/password/forgot', '/up'] as $url) {
             $this->get($url)->assertOk();
         }
         $this->get('/c/mavjud-emas')->assertNotFound();

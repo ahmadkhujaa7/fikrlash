@@ -96,6 +96,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('interactions', fn (Request $r) => Limit::perMinute(90)->by('interact:'.$by($r)));
         RateLimiter::for('follows', fn (Request $r) => Limit::perMinute(30)->by('follows:'.$by($r)));
         RateLimiter::for('search', fn (Request $r) => Limit::perMinute(40)->by('search:'.$by($r)));
+        // Yozish paytidagi qidiruv: har bir harf emas, 250 ms pauzadan keyin so‘rov ketadi.
+        RateLimiter::for('search-live', fn (Request $r) => Limit::perMinute(150)->by('search-live:'.$by($r)));
         RateLimiter::for('views', fn (Request $r) => Limit::perMinute(120)->by('views:'.$by($r)));
         RateLimiter::for('reports', fn (Request $r) => Limit::perHour(20)->by('reports:'.$by($r)));
         RateLimiter::for('uploads', fn (Request $r) => Limit::perHour(30)->by('uploads:'.$by($r)));

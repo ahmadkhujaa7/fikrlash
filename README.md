@@ -149,7 +149,7 @@ Migratsiyalar: `database/migrations/`. Asosiy jadvallar:
 - `posts` — status (published/draft/hidden/pending_moderation), visibility (public/followers), hisoblagichlar, `score`, AI maydonlari, soft delete
 - `comments` — bir darajali javoblar (`parent_id` + `reply_to_user_id`)
 - `post_likes`, `comment_likes`, `saved_posts`, `follows` — `unique` cheklovlar bilan
-- `categories`, `tags`, `post_tag`
+- `categories` — ichki mavzular (faqat tizim va admin uchun; foydalanuvchiga ko‘rsatilmaydi), `tags`, `post_tag`
 - `user_affinities` — foydalanuvchi didi: `kind` (category/tag/author), `score` (javoblar), `exposures` (ko‘rsatishlar); haftalik so‘nadi
 - `user_interests` — eski kategoriya vaznlari (yangi jadvalga ko‘chirilgan, endi ishlatilmaydi)
 - `post_views` — kim nimani ko‘rgani, o‘qish vaqti va "Qiziq emas" belgisi (90 kun saqlanadi)
@@ -364,6 +364,12 @@ Foydalanuvchi mavzu, teg yoki qiziqish tanlamaydi — post yozish faqat matn va 
 | "Qiziq emas" | Post menyusi | post yashiriladi, +8 javobsiz ko‘rsatish |
 
 Har bir kategoriya, teg va muallif uchun `lift = ((score + k·μ) / (exposures + k)) / μ` hisoblanadi (μ = 0.25, k = 4): ma’lumot kam bo‘lsa lift ≈ 1, ko‘p ko‘rsatilib e’tiborsiz qolgan narsa < 1, sevimli mavzu > 1. Post bahosi: `hot × kat.lift × teg.lift^0.7 × muallif.lift^0.9 × obuna × AI sifat × (ko‘rilgan bo‘lsa 0.25)`. Keyin bitta muallif ketma-ket ikkitadan ko‘p chiqmaydi va har 6-o‘ringa foydalanuvchi deyarli ko‘rmagan mavzudan post qo‘yiladi. Barcha koeffitsientlar `config/fikrlash.php` → `taste`.
+
+Mavzular (kategoriyalar) faqat tizim ichida ishlatiladi: AI har bir postga mavzu belgilaydi, algoritm shu orqali didni o‘rganadi, admin panelda statistika ko‘rinadi. Foydalanuvchi interfeysida, API va sitemap'da mavzular yo‘q.
+
+### Qidiruv
+
+Qidiruv real vaqtda ishlaydi: foydalanuvchi yozishni to‘xtatgach (250 ms) natijalar orqa fonda yangilanadi, sahifa qayta yuklanmaydi va URL o‘zgaradi (`/search/live`). Sarlavhadagi qidiruv maydoni yozish bilan odamlar, teglar va fikrlar bo‘yicha tezkor takliflarni ko‘rsatadi (`/search/suggest`, ↑/↓ bilan tanlash, Esc — yopish, Enter — to‘liq natijalar). Eski so‘rovlar bekor qilinadi (AbortController), limit — daqiqasiga 150 so‘rov.
 
 **MVP (tayyor):** autentifikatsiya + SMS OTP, profil, postlar (matn + rasm; mavzu va teglarni AI aniqlaydi), izoh va javoblar, like, saqlash, obuna, o‘rganuvchi shaxsiy lenta, qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, xatti-harakatdan o‘rganadigan tavsiyalar ("Qiziq emas", kashfiyot), o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
 

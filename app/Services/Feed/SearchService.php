@@ -2,7 +2,6 @@
 
 namespace App\Services\Feed;
 
-use App\Models\Category;
 use App\Models\Tag;
 use App\Models\User;
 use App\Support\TextNormalizer;
@@ -23,6 +22,18 @@ class SearchService
 
     public function posts(string $query, ?User $viewer, int $page = 1): Paginator
     {
+        return $this->postsQuery($query, $viewer)
+            ->simplePaginate(config('fikrlash.feed.per_page'), ['*'], 'page', $page);
+    }
+
+    /** Tezkor takliflar uchun: bir nechta eng mos post. */
+    public function quickPosts(string $query, ?User $viewer, int $limit = 4): Collection
+    {
+        return $this->postsQuery($query, $viewer)->limit($limit)->get();
+    }
+
+    private function postsQuery(string $query, ?User $viewer): Builder
+    {
         $normalized = TextNormalizer::forSearch($query);
         $builder = $this->feed->baseQuery($viewer);
 
@@ -38,8 +49,7 @@ class SearchService
             $builder->where('posts.search_text', 'like', '%'.$this->escapeLike($normalized).'%');
         }
 
-        return $builder->orderByDesc('posts.score')->orderByDesc('posts.id')
-            ->simplePaginate(config('fikrlash.feed.per_page'), ['*'], 'page', $page);
+        return $builder->orderByDesc('posts.score')->orderByDesc('posts.id');
     }
 
     public function users(string $query, int $limit = 20): Collection
@@ -65,15 +75,6 @@ class SearchService
 
         return Tag::query()->where('slug', 'like', $this->escapeLike($slug).'%')
             ->withCount('posts')->orderByDesc('posts_count')->limit($limit)->get();
-    }
-
-    public function categories(string $query): Collection
-    {
-        $q = TextNormalizer::forSearch($query);
-
-        return Category::cachedActive()->filter(
-            fn (Category $c) => str_contains(TextNormalizer::forSearch($c->name), $q)
-        )->values();
     }
 
     private function escapeLike(string $value): string

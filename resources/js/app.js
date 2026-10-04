@@ -233,6 +233,120 @@ window.sharePost = async (url, text) => {
 };
 
 /* ---------- Kategoriyaga obuna ---------- */
+/* ---------- Real vaqtdagi qidiruv (qidiruv sahifasi) ---------- */
+Alpine.data('liveSearch', ({ url, q, type }) => ({
+    q,
+    type,
+    loading: false,
+    controller: null,
+    lastKey: `${q.trim()}|${type}`,
+    init() {
+        // Orqaga/oldinga tugmalari — URL'dagi so‘rov qayta tiklanadi.
+        window.addEventListener('popstate', () => {
+            const params = new URLSearchParams(location.search);
+            this.q = params.get('q') ?? '';
+            this.type = params.get('type') ?? 'all';
+            this.run(true, false);
+        });
+    },
+    async run(force = false, push = true) {
+        const q = this.q.trim();
+        const key = `${q}|${this.type}`;
+        if (!force && key === this.lastKey) return;
+        this.lastKey = key;
+
+        // "#teg" yuborilsa (Enter) — teg sahifasiga o‘tamiz.
+        if (force && push && /^#[\p{L}\p{N}_]+$/u.test(q)) {
+            window.location.href = `/search?q=${encodeURIComponent(q)}`;
+            return;
+        }
+
+        this.controller?.abort();
+        const controller = (this.controller = new AbortController());
+        this.loading = true;
+        const params = new URLSearchParams(q ? { q, type: this.type } : {});
+
+        try {
+            const res = await fetch(`${url}?${params}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+                credentials: 'same-origin',
+                signal: controller.signal,
+            });
+            if (!res.ok) throw new Error(res.status === 429 ? 'Juda tez qidiryapsiz — bir oz kuting.' : 'Qidiruvda xato yuz berdi.');
+            this.$refs.results.innerHTML = await res.text();
+            initViewTracking(this.$refs.results);
+            const target = q ? `/search?${params}` : '/search';
+            if (push && target !== location.pathname + location.search) history.replaceState(null, '', target);
+            document.title = (q ? `“${q}” — qidiruv` : 'Qidiruv') + ' — Fikrlash.uz';
+        } catch (e) {
+            if (e.name !== 'AbortError') toast(e.message, 'error');
+        } finally {
+            if (this.controller === controller) this.loading = false;
+        }
+    },
+    setType(type) {
+        this.type = type;
+        this.run(true);
+    },
+    clear() {
+        this.q = '';
+        this.run(true);
+        this.$refs.input.focus();
+    },
+}));
+
+/* ---------- Sarlavhadagi tezkor qidiruv (takliflar ro‘yxati) ---------- */
+Alpine.data('quickSearch', (url) => ({
+    q: '',
+    html: '',
+    open: false,
+    loading: false,
+    controller: null,
+    async suggest() {
+        const q = this.q.trim();
+        if (q.length < 2) {
+            this.open = false;
+            this.html = '';
+            return;
+        }
+        this.controller?.abort();
+        const controller = (this.controller = new AbortController());
+        this.loading = true;
+        try {
+            const res = await fetch(`${url}?${new URLSearchParams({ q })}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+                credentials: 'same-origin',
+                signal: controller.signal,
+            });
+            if (!res.ok) return;
+            this.html = await res.text();
+            this.open = this.$root.contains(document.activeElement);
+        } catch (e) {
+            // Bekor qilingan so‘rov yoki tarmoq xatosi — takliflar shunchaki chiqmaydi.
+        } finally {
+            if (this.controller === controller) this.loading = false;
+        }
+    },
+    move(step) {
+        const items = [...this.$root.querySelectorAll('[data-suggest]')];
+        if (!items.length) return;
+        this.open = true;
+        const index = items.indexOf(document.activeElement);
+        const next = index + step;
+        if (next < 0) {
+            this.$refs.q.focus();
+            return;
+        }
+        items[Math.min(next, items.length - 1)].focus();
+    },
+    close() {
+        if (!this.open) return;
+        // Avval maydonga fokus (u @focus'da ro‘yxatni ochadi), keyin yopamiz.
+        if (this.$root.contains(document.activeElement)) this.$refs.q.focus();
+        this.open = false;
+    },
+}));
+
 /* ---------- "Qiziq emas" — post yashiriladi, algoritm shunga o‘xshash postlarni kamroq ko‘rsatadi ---------- */
 Alpine.data('dismissable', (url) => ({
     dismissed: false,

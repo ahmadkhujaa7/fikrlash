@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\PostStatus;
 use App\Http\Requests\Posts\CreatePostRequest;
 use App\Http\Requests\Posts\UpdatePostRequest;
-use App\Models\Category;
 use App\Models\Post;
 use App\Services\Feed\FeedService;
 use App\Services\Feed\ViewRecorder;
@@ -23,7 +22,7 @@ class PostController extends Controller
         $this->authorize('view', $post);
 
         $viewer = $request->user();
-        $post->load(['user', 'category', 'tags']);
+        $post->load(['user', 'tags']);
         $this->feed->withViewerState([$post], $viewer);
 
         if ($post->isPublished()) {
@@ -43,7 +42,7 @@ class PostController extends Controller
     {
         $this->authorize('create', Post::class);
 
-        return view('posts.create', ['categories' => Category::cachedActive()]);
+        return view('posts.create');
     }
 
     public function store(CreatePostRequest $request): RedirectResponse
@@ -61,7 +60,7 @@ class PostController extends Controller
     {
         $this->authorize('update', $post);
 
-        return view('posts.edit', ['post' => $post->load('tags'), 'categories' => Category::cachedActive()]);
+        return view('posts.edit', ['post' => $post->load('tags')]);
     }
 
     public function update(UpdatePostRequest $request, Post $post): RedirectResponse

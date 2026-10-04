@@ -3,7 +3,6 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\NotificationController;
@@ -40,10 +39,11 @@ Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')-
 // ---- Ochiq sahifalar ----
 Route::get('/posts/{post}', [PostController::class, 'show'])->whereNumber('post')->name('posts.show');
 Route::get('/posts/{post}/comments', [CommentController::class, 'index'])->whereNumber('post')->name('posts.comments');
-Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-Route::get('/c/{category}', [CategoryController::class, 'show'])->name('categories.show');
 Route::get('/t/{slug}', [TagController::class, 'show'])->name('tags.show');
 Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:search')->name('search');
+// Real vaqtdagi qidiruv: yozilayotganda natijalar (HTML bo‘lak) va sarlavhadagi tezkor takliflar.
+Route::get('/search/live', [SearchController::class, 'live'])->middleware('throttle:search-live')->name('search.live');
+Route::get('/search/suggest', [SearchController::class, 'suggest'])->middleware('throttle:search-live')->name('search.suggest');
 Route::get('/@{user}', [ProfileController::class, 'show'])->name('profile.show');
 Route::get('/@{user}/posts', [ProfileController::class, 'posts'])->name('profile.posts');
 Route::get('/@{user}/replies', [ProfileController::class, 'replies'])->name('profile.replies');

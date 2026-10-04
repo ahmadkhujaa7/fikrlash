@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\CategoryResource;
 use App\Http\Resources\PostResource;
 use App\Http\Resources\TagResource;
 use App\Http\Resources\UserResource;
@@ -37,7 +36,6 @@ class SearchController extends Controller
         }
         if (in_array($type, ['all', 'tags'], true)) {
             $result['tags'] = TagResource::collection($search->tags($data['q']))->resolve($request);
-            $result['categories'] = CategoryResource::collection($search->categories($data['q']))->resolve($request);
         }
 
         return ApiResponse::success($result);

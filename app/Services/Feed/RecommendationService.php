@@ -46,7 +46,7 @@ class RecommendationService
         $pageIds = array_slice($pageIds, 0, $perPage);
 
         // Visibility qayta tekshiriladi: keshdan keyin o‘chirilgan/yashirilgan postlar chiqmaydi.
-        $posts = Post::query()->forFeed($user)->with(['user', 'category'])->whereIn('posts.id', $pageIds)->get()
+        $posts = Post::query()->forFeed($user)->with(['user'])->whereIn('posts.id', $pageIds)->get()
             ->sortBy(fn (Post $p) => array_search($p->id, $pageIds, true))->values();
 
         $paginator = new SimplePaginator($posts, $perPage, $page, ['path' => SimplePaginator::resolveCurrentPath(), 'pageName' => 'page']);

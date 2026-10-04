@@ -2,54 +2,31 @@
 @section('title', $q ? '“'.$q.'” — qidiruv' : 'Qidiruv')
 
 @section('content')
-    <div class="sticky top-16 z-20 border-b border-line bg-paper/95 backdrop-blur-md sm:rounded-t-[27px]">
-        <form action="{{ route('search') }}" method="GET" role="search" class="px-4 pt-8 sm:px-6">
-            <label class="relative block">
-                <span class="sr-only">Qidiruv</span>
-                <x-ico name="search" size="size-6" class="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-muted" />
-                <input type="search" name="q" value="{{ $q }}" autofocus placeholder="Fikr, odam yoki #teg"
-                       class="block w-full border-0 bg-transparent py-3 pl-10 pr-0 font-serif text-[1.75rem] tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0">
-                <input type="hidden" name="type" value="{{ $type }}">
-            </label>
-        </form>
-        @if (mb_strlen($q) >= 2)
-            <x-tabs class="!border-b-0" :items="collect(['all' => 'Hammasi', 'posts' => 'Fikrlar', 'users' => 'Odamlar', 'tags' => 'Teglar'])
-                ->map(fn ($label, $key) => ['label' => $label, 'href' => route('search', ['q' => $q, 'type' => $key]), 'active' => $type === $key])->values()->all()" />
-        @endif
+    {{-- Real vaqtdagi qidiruv: yozish to‘xtagach (250 ms) natijalar orqa fonda yangilanadi, sahifa qayta yuklanmaydi. --}}
+    <div x-data="liveSearch({ url: '{{ route('search.live') }}', q: @js($q), type: @js($type) })">
+        <div class="sticky top-16 z-20 border-b border-line bg-paper/95 backdrop-blur-md sm:rounded-t-[27px]">
+            <form action="{{ route('search') }}" method="GET" role="search" class="px-4 py-5 sm:px-6 sm:pt-7" @submit.prevent="run(true)">
+                <label class="relative block">
+                    <span class="sr-only">Qidiruv</span>
+                    <span class="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-muted">
+                        <x-ico name="search" size="size-6" x-show="!loading" />
+                        <x-spinner class="!size-6" x-show="loading" x-cloak />
+                    </span>
+                    <input type="search" name="q" x-model="q" x-ref="input" value="{{ $q }}" autofocus autocomplete="off" enterkeyhint="search"
+                           @input.debounce.250ms="run()" @keydown.escape="clear()"
+                           placeholder="Fikr, odam yoki #teg"
+                           class="block w-full border-0 bg-transparent py-2 pl-10 pr-10 font-serif text-[1.6rem] tracking-[-0.01em] text-ink placeholder:text-muted/70 focus:outline-none focus:ring-0 sm:text-[1.75rem]">
+                    <button type="button" x-show="q.length" x-cloak @click="clear()"
+                            class="absolute right-0 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-sunken hover:text-ink" aria-label="Tozalash">
+                        <x-ico name="x" size="size-5" />
+                    </button>
+                    <input type="hidden" name="type" :value="type" value="{{ $type }}">
+                </label>
+            </form>
+        </div>
+
+        <div x-ref="results" aria-live="polite" :aria-busy="loading" class="transition-opacity duration-150" :class="{ 'opacity-60': loading }">
+            @include('search.results')
+        </div>
     </div>
-
-    @if (mb_strlen($q) < 2)
-        <x-empty-state icon="search" title="Nimani qidiramiz?" text="Fikr matni, ism, @username yoki #teg bo‘yicha qidiring." />
-    @else
-        @if ($users->isNotEmpty())
-            <section class="border-b border-line">
-                @if ($type === 'all')<h2 class="px-4 sm:px-6 pt-4 text-sm font-semibold text-muted">Odamlar</h2>@endif
-                <ul class="stream">
-                    @foreach ($users as $person)
-                        <li>@include('partials.user-row', ['person' => $person])</li>
-                    @endforeach
-                </ul>
-                @if ($type === 'all' && $users->count() >= 5)
-                    <a href="{{ route('search', ['q' => $q, 'type' => 'users']) }}" class="block px-4 sm:px-6 py-3 text-sm text-lapis hover:underline">Barcha odamlar</a>
-                @endif
-            </section>
-        @endif
-
-        @if ($tags->isNotEmpty() || $categories->isNotEmpty())
-            <section class="flex flex-wrap gap-2 border-b border-line px-4 sm:px-6 py-4">
-                @foreach ($categories as $category)
-                    <a href="{{ route('categories.show', $category) }}" class="chip !bg-firuza-soft !text-firuza">{{ $category->name }}</a>
-                @endforeach
-                @foreach ($tags as $tag)
-                    <a href="{{ route('tags.show', $tag->slug) }}" class="chip">#{{ $tag->name }} <span class="text-muted">{{ $tag->posts_count }}</span></a>
-                @endforeach
-            </section>
-        @endif
-
-        @if ($posts)
-            @include('partials.feed', ['emptyTitle' => '“'.$q.'” bo‘yicha fikr topilmadi', 'emptyText' => 'Boshqa so‘z bilan urinib ko‘ring yoki apostrofsiz yozing.'])
-        @elseif ($users->isEmpty() && $tags->isEmpty() && $categories->isEmpty())
-            <x-empty-state icon="search" title="Hech narsa topilmadi" />
-        @endif
-    @endif
 @endsection

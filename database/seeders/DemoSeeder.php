@@ -16,6 +16,7 @@ use App\Services\Social\InteractionService;
 use App\Services\Social\NotificationService;
 use App\Services\Social\ReportService;
 use App\Services\Social\TagService;
+use App\Support\TextNormalizer;
 use Database\Factories\CommentFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Event;
@@ -70,7 +71,12 @@ class DemoSeeder extends Seeder
         }
 
         $scores = app(ScoreCalculator::class);
-        Post::query()->get()->each(fn (Post $p) => $p->forceFill(['score' => $scores->hot($p)])->saveQuietly());
+        // Seeder model hodisalarisiz ishlaydi — qidiruv matni va hash shu yerda yoziladi.
+        Post::query()->get()->each(fn (Post $p) => $p->forceFill([
+            'score' => $scores->hot($p),
+            'search_text' => TextNormalizer::forSearch($p->content),
+            'content_hash' => hash('sha256', TextNormalizer::forHash($p->content)),
+        ])->saveQuietly());
 
         $notifications = app(NotificationService::class);
         foreach ($everyone->take(10) as $user) {

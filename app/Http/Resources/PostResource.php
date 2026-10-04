@@ -22,7 +22,6 @@ class PostResource extends JsonResource
             'status' => $this->status->value,
             'visibility' => $this->visibility->value,
             'author' => new UserResource($this->whenLoaded('user')),
-            'category' => new CategoryResource($this->whenLoaded('category')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'stats' => [
                 'likes' => $this->likes_count,

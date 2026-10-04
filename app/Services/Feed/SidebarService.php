@@ -2,7 +2,6 @@
 
 namespace App\Services\Feed;
 
-use App\Models\Category;
 use App\Models\Follow;
 use App\Models\Tag;
 use App\Models\User;
@@ -10,21 +9,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-/** Yon panel: trend teglar, kimni o‘qish mumkin va "lentangiz nimaga moslashgan" (keshlangan). */
+/** Yon panel: trend teglar va kimni o‘qish mumkin (keshlangan). */
 class SidebarService
 {
     public function __construct(private TasteService $taste) {}
-
-    /** Algoritm aniqlagan eng kuchli qiziqishlar — foydalanuvchiga lenta nega shunday ekanini ko‘rsatadi. */
-    public function tasteTopics(?User $viewer, int $limit = 4): Collection
-    {
-        if (! $viewer) {
-            return collect();
-        }
-        $ids = array_keys($this->taste->topCategories($viewer->id, $limit));
-
-        return Category::cachedActive()->whereIn('id', $ids)->sortBy(fn ($c) => array_search($c->id, $ids, true))->values();
-    }
 
     public function trendingTags(int $limit = 8): Collection
     {
