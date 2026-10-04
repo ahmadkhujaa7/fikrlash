@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Storage;
@@ -53,6 +54,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return [
             'phone_verified_at' => 'datetime',
             'verified_at' => 'datetime',
+            'admin_note' => 'encrypted',
             'last_login_at' => 'datetime',
             'last_active_at' => 'datetime',
             'suspended_until' => 'datetime',
@@ -103,6 +105,29 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function following(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'follows', 'follower_id', 'following_id')->withPivot('created_at');
+    }
+
+    public function loginEvents(): HasMany
+    {
+        return $this->hasMany(LoginEvent::class);
+    }
+
+    /** Brauzer sessiyalari (SESSION_DRIVER=database). */
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(UserSession::class);
+    }
+
+    /** Shu foydalanuvchining o‘ziga qilingan shikoyatlar. */
+    public function reportsAgainst(): MorphMany
+    {
+        return $this->morphMany(Report::class, 'reportable');
+    }
+
+    /** Adminlar shu foydalanuvchiga nisbatan qilgan amallar. */
+    public function auditTrail(): MorphMany
+    {
+        return $this->morphMany(AuditLog::class, 'target');
     }
 
     public function notifications(): HasMany

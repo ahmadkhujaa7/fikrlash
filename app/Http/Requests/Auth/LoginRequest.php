@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Services\Security\LoginTracker;
 use App\Support\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
@@ -36,12 +37,14 @@ class LoginRequest extends FormRequest
 
         if (! $user || ! Hash::check((string) $this->input('password'), $user->password)) {
             Log::channel('security')->notice('Muvaffaqiyatsiz login', ['ip' => $this->ip()]);
+            app(LoginTracker::class)->record('failed', $user, $this, identifier: $login);
 
             throw ValidationException::withMessages(['login' => 'Telefon/username yoki parol noto‘g‘ri.']);
         }
 
         if (! $user->canSignIn()) {
             Log::channel('security')->notice('Bloklangan akkauntga kirish urinishi', ['user_id' => $user->id, 'ip' => $this->ip()]);
+            app(LoginTracker::class)->record('blocked', $user, $this, identifier: $login);
 
             throw ValidationException::withMessages(['login' => 'Akkauntingiz bloklangan. Murojaat uchun: support@fikrlash.uz']);
         }

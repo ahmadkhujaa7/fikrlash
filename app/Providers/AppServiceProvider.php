@@ -13,11 +13,15 @@ use App\Services\Sms\EskizSmsProvider;
 use App\Services\Sms\LogSmsProvider;
 use App\Services\Social\NotificationService;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterval;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Events\LocaleUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -43,6 +47,15 @@ class AppServiceProvider extends ServiceProvider
     {
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
         Carbon::setLocale('uz_Latn');
+        // Livewire (admin panel) har so‘rovda app locale'ni qayta o‘rnatadi — Carbon esa "uz" ni kirill deb oladi.
+        // Shuning uchun har safar lotin yozuviga qaytaramiz ("2 kun avval", "2 кун аввал" emas).
+        Event::listen(LocaleUpdated::class, function ($event) {
+            if (str_starts_with($event->locale, 'uz')) {
+                Carbon::setLocale('uz_Latn');
+                CarbonImmutable::setLocale('uz_Latn');
+                CarbonInterval::setLocale('uz_Latn');
+            }
+        });
 
         // DB'da klass nomlari emas, qisqa aliaslar saqlanadi (refactor'ga chidamli).
         Relation::enforceMorphMap([

@@ -3,31 +3,33 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
-use App\Services\Social\AuditLogger;
+use App\Services\Account\AdminUserService;
+use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
+/** Admin istalgan ma'lumotni o‘zgartiradi; barcha o‘zgarishlar AdminUserService orqali audit qilinadi. */
 class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
 
-    private array $original = [];
-
-    protected function beforeSave(): void
+    protected function getHeaderActions(): array
     {
-        $this->original = $this->record->only(['name', 'username', 'email', 'role', 'bio']);
+        return [ViewAction::make()];
     }
 
-    /** role fillable emas — admin forma orqali ataylab o‘zgartiradi. */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        $record->forceFill($data)->save();
-
-        return $record;
+        return app(AdminUserService::class)->update($record, $data, auth()->user());
     }
 
-    protected function afterSave(): void
+    protected function getRedirectUrl(): ?string
     {
-        app(AuditLogger::class)->log('user.updated', $this->record, $this->original, $this->record->only(array_keys($this->original)));
+        return UserResource::getUrl('view', ['record' => $this->record]);
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'O‘zgarishlar saqlandi';
     }
 }

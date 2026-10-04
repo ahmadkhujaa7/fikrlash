@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\VerifyCodeRequest;
 use App\Models\Setting;
 use App\Services\Auth\OtpService;
 use App\Services\Auth\RegistrationService;
+use App\Services\Security\LoginTracker;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,6 +70,7 @@ class RegisterController extends Controller
         Auth::login($user, remember: true);
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->save();
+        app(LoginTracker::class)->record('register', $user, request());
 
         return redirect()->route('home')->with('toast', 'Xush kelibsiz, '.$user->name.'!');
     }

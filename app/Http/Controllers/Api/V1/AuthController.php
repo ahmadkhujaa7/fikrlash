@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Account\AccountService;
 use App\Services\Auth\PasswordResetService;
 use App\Services\Auth\RegistrationService;
+use App\Services\Security\LoginTracker;
 use App\Support\ApiResponse;
 use App\Support\ValidationRules;
 use Illuminate\Http\JsonResponse;
@@ -48,6 +49,7 @@ class AuthController extends Controller
         ]);
 
         $user = $this->registration->complete($data['registration_token'], $data['code']);
+        app(LoginTracker::class)->record('register', $user, $request);
 
         return $this->tokenResponse($user, $data['device_name'] ?? 'api', 'Ro‘yxatdan o‘tdingiz.', 201);
     }
@@ -66,12 +68,14 @@ class AuthController extends Controller
         $user = $request->resolveUser();
         $accounts->reactivateIfNeeded($user);
         $user->forceFill(['last_login_at' => now()])->save();
+        app(LoginTracker::class)->record('login', $user, $request);
 
         return $this->tokenResponse($user, $request->input('device_name', 'api'), 'Xush kelibsiz!');
     }
 
     public function logout(Request $request): JsonResponse
     {
+        app(LoginTracker::class)->record('logout', $request->user(), $request);
         $token = $request->user()->currentAccessToken();
         if ($token instanceof PersonalAccessToken) {
             $token->delete();

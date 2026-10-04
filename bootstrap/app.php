@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\OtpException;
+use App\Http\Middleware\BlockWhileImpersonating;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\ApiResponse;
@@ -34,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Nginx/load balancer orqasida haqiqiy IP (rate limit, audit) uchun.
         $middleware->trustProxies(at: env('TRUSTED_PROXIES', '127.0.0.1'));
+
+        $middleware->alias(['not-impersonating' => BlockWhileImpersonating::class]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('home'));

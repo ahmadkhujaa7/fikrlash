@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Enums\OtpPurpose;
 use App\Models\User;
+use App\Services\Security\LoginTracker;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -42,6 +43,7 @@ class PasswordResetService
                 DB::table(config('session.table', 'sessions'))->where('user_id', $user->id)->delete();
             }
         });
+        app(LoginTracker::class)->record('password_reset', $user);
 
         Log::channel('security')->info('Parol tiklandi', ['user_id' => $user->id]);
 

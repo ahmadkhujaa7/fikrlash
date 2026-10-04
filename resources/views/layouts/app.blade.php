@@ -168,6 +168,16 @@
 </div>
 
 @include('partials.report-modal')
+@if (\App\Services\Security\ImpersonationService::active() && $me)
+    {{-- Admin foydalanuvchi nomidan ko‘ryapti — doim ko‘rinib turadi --}}
+    <form method="POST" action="{{ route('impersonate.stop') }}"
+          class="fixed inset-x-0 bottom-20 z-[55] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-3 rounded-full bg-amber py-1.5 pl-4 pr-1.5 text-[13px] text-white shadow-[0_12px_40px_-12px_rgb(0_0_0/0.45)] md:bottom-6">
+        @csrf
+        <x-ico name="eye" size="size-4" />
+        <span class="truncate">Admin rejimi: <strong class="font-semibold">{{ '@'.$me->username }}</strong> nomidan ko‘ryapsiz</span>
+        <button type="submit" class="shrink-0 rounded-full bg-white/20 px-3 py-1 font-medium hover:bg-white/30">Admin’ga qaytish</button>
+    </form>
+@endif
 <x-toasts />
 </body>
 </html>

@@ -154,6 +154,8 @@ Migratsiyalar: `database/migrations/`. Asosiy jadvallar:
 - `user_interests` — eski kategoriya vaznlari (yangi jadvalga ko‘chirilgan, endi ishlatilmaydi)
 - `post_views` — kim nimani ko‘rgani, o‘qish vaqti va "Qiziq emas" belgisi (90 kun saqlanadi)
 - `post_ai_analyses` — AI tahlil tarixi, tokenlar, xatolar
+- `login_events` — kirishlar tarixi (admin kuzatuvi, 180 kun)
+- `users.admin_note` — adminlarning ichki izohi (shifrlangan)
 - `notifications`, `reports`, `audit_logs`, `settings`
 
 O‘zgartirishlar faqat migratsiya orqali: `php artisan make:migration ...` → `php artisan migrate`.
@@ -349,6 +351,15 @@ sudo crontab -u www-data deploy/crontab
 ---
 
 ## 14. Yo‘l xaritasi
+
+### Admin panel: boshqaruv va kuzatuv
+
+- **Boshqaruv paneli** — jonli (30 soniyada yangilanadi): hozir onlayn foydalanuvchilar va mehmonlar, bugun faollar, yangi a’zolar, postlar, kutilayotgan shikoyatlar, moderatsiya navbati, noto‘g‘ri parollar; 7/30/90 kunlik o‘sish grafigi; onlayn foydalanuvchilar, so‘nggi kirishlar va yangi a’zolar ro‘yxati.
+- **Foydalanuvchilar** — “Yangi foydalanuvchi” tugmasi; tablar (Onlayn, Bugun qo‘shilgan, Tasdiqlangan, Cheklangan, Adminlar); filtrlar (holat, rol, faollik, ro‘yxatdan o‘tgan sana, ustidan shikoyat, ko‘p noto‘g‘ri parol); CSV eksport; ommaviy tasdiqlash, xabar yuborish, bloklash. Ctrl+K — global qidiruv.
+- **Foydalanuvchini tahrirlash** — istalgan maydon: avatar, ism, username, email, jins, tug‘ilgan sana, bio, telefon, yangi parol, rol, holat (+ cheklov muddati), tasdiq belgisi, ichki izoh (shifrlangan, faqat adminlar ko‘radi). Har bir o‘zgarish audit log’ga “eski → yangi” ko‘rinishida yoziladi (parol qiymati yozilmaydi). Admin o‘z rolini/holatini o‘zgartira olmaydi, yagona admin rolini olib bo‘lmaydi; parol o‘zgarsa — foydalanuvchi barcha qurilmalardan chiqariladi.
+- **360° sahifa** — ko‘rsatkichlar, kirish va xavfsizlik (oxirgi kirish joyi/qurilmasi, noto‘g‘ri parollar, sessiyalar, tokenlar), shaxsiy ma’lumotlar, algoritm o‘rgangan qiziqishlar; tablar: postlar, izohlar, kirishlar tarixi, faol qurilmalar (istalganini tugatish), unga shikoyatlar, admin amallari.
+- **Foydalanuvchi nomidan ko‘rish** — sayt aynan u ko‘rgandek ochiladi; pastda “Admin’ga qaytish” paneli turadi; parol/telefon/akkauntni o‘chirish bu rejimda taqiqlangan; adminlar va bloklanganlar nomidan kirib bo‘lmaydi; har bir kirish audit va kirishlar tarixiga yoziladi.
+- **Kuzatuv** bo‘limi — Xavfsizlik markazi (kirishlar statistikasi, 24 soatda 5+ noto‘g‘ri urinish qilgan shubhali IP’lar), Kirishlar tarixi (`login_events`: login, noto‘g‘ri parol, bloklangan akkauntga urinish, chiqish, ro‘yxatdan o‘tish, parol tiklash, impersonatsiya; IP, qurilma, kanal — sayt/ilova/admin; 180 kun saqlanadi), Faol sessiyalar (barcha brauzer sessiyalari, tugatish), Admin amallari (audit, o‘qiladigan nomlar va o‘zgarishlar bilan).
 
 ### Tavsiya algoritmi qanday ishlaydi
 

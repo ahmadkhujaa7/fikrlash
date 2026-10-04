@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\ComposeController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -36,6 +37,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/password/reset', [PasswordResetController::class, 'reset'])->middleware('throttle:otp-verify');
 });
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->middleware('auth')->name('impersonate.stop');
 
 // ---- Ochiq sahifalar ----
 Route::get('/posts/{post}', [PostController::class, 'show'])->whereNumber('post')->name('posts.show');
@@ -87,13 +89,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/avatar', [Settings\ProfileSettingsController::class, 'destroyAvatar'])->name('avatar.destroy');
 
         Route::get('/security', [Settings\SecuritySettingsController::class, 'edit'])->name('security');
-        Route::put('/password', [Settings\SecuritySettingsController::class, 'updatePassword'])->name('password');
-        Route::post('/phone', [Settings\SecuritySettingsController::class, 'requestPhoneChange'])->middleware('throttle:otp-send')->name('phone');
-        Route::post('/phone/verify', [Settings\SecuritySettingsController::class, 'verifyPhoneChange'])->middleware('throttle:otp-verify')->name('phone.verify');
+        Route::put('/password', [Settings\SecuritySettingsController::class, 'updatePassword'])->middleware('not-impersonating')->name('password');
+        Route::post('/phone', [Settings\SecuritySettingsController::class, 'requestPhoneChange'])->middleware('throttle:otp-send')->middleware('not-impersonating')->name('phone');
+        Route::post('/phone/verify', [Settings\SecuritySettingsController::class, 'verifyPhoneChange'])->middleware('throttle:otp-verify')->middleware('not-impersonating')->name('phone.verify');
 
         Route::get('/account', [Settings\AccountSettingsController::class, 'edit'])->name('account');
-        Route::post('/deactivate', [Settings\AccountSettingsController::class, 'deactivate'])->name('deactivate');
-        Route::delete('/account', [Settings\AccountSettingsController::class, 'destroy'])->name('delete');
+        Route::post('/deactivate', [Settings\AccountSettingsController::class, 'deactivate'])->middleware('not-impersonating')->name('deactivate');
+        Route::delete('/account', [Settings\AccountSettingsController::class, 'destroy'])->middleware('not-impersonating')->name('delete');
         Route::get('/export', [Settings\AccountSettingsController::class, 'export'])->name('export');
     });
 });
