@@ -85,12 +85,17 @@ class AccountTest extends TestCase
         $this->assertStringContainsString('Eksport posti', $response->streamedContent());
     }
 
-    public function test_api_token_page_shows_token_once(): void
+    public function test_users_have_no_api_token_page_and_api_docs_are_admin_only(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post('/settings/tokens', ['name' => 'Bot', 'expires_in_days' => 30])->assertSessionHas('new_token');
-        $this->assertSame(1, $user->tokens()->count());
-        $this->actingAs($user)->get('/settings/tokens')->assertOk()->assertSee('Bot');
+        $this->actingAs($user)->get('/settings/tokens')->assertNotFound();
+        $this->actingAs($user)->get('/settings')->assertOk()->assertDontSee('API token');
+        $this->actingAs($user)->get('/docs/api')->assertNotFound();
+        $this->actingAs($user)->get('/docs/openapi.json')->assertNotFound();
+        $this->actingAs($user)->get('/')->assertDontSee('/docs/api');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin)->get('/docs/api')->assertOk();
     }
 }

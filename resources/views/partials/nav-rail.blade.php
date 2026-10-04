@@ -15,7 +15,7 @@
 @endphp
 <nav class="flex flex-col gap-0.5" aria-label="Asosiy menyu">
     @foreach ($items as [$label, $icon, $href, $active])
-        <a href="{{ $href }}" @if ($active) aria-current="page" @endif
+        <a href="{{ $href }}" @if ($active) aria-current="page" @endif @if ($icon === 'home') data-home-link @endif
            class="group relative flex items-center gap-3.5 rounded-full px-3.5 py-2.5 text-[15px] transition-colors {{ $active ? 'bg-paper font-medium text-ink shadow-[0_1px_2px_rgb(19_21_27/0.06)]' : 'text-ink-soft hover:bg-ink/[0.04] hover:text-ink' }}">
             <span class="relative">
                 <x-ico :name="$icon" size="size-[22px]" />

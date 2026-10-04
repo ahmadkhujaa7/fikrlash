@@ -10,6 +10,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -41,6 +42,14 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(fn () => Branding::faviconUrl() ?? '/favicon.svg')
             ->colors(['primary' => Color::hex('#2343b8'), 'gray' => Color::Stone])
             ->font('Onest')
+            ->navigationItems([
+                // API hujjatlari faqat adminlar uchun (foydalanuvchilarda API token bo‘limi yo‘q).
+                NavigationItem::make('API hujjatlari')
+                    ->url('/docs/api', shouldOpenInNewTab: true)
+                    ->icon(Heroicon::OutlinedCodeBracket)
+                    ->group('Tizim')
+                    ->sort(90),
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

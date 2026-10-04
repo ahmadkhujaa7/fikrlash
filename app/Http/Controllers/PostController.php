@@ -11,13 +11,14 @@ use App\Services\Feed\ViewRecorder;
 use App\Services\Posts\PostService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class PostController extends Controller
 {
     public function __construct(private PostService $posts, private FeedService $feed) {}
 
-    public function show(Request $request, Post $post, ViewRecorder $views): View
+    public function show(Request $request, Post $post, ViewRecorder $views): View|Response
     {
         $this->authorize('view', $post);
 
@@ -32,10 +33,17 @@ class PostController extends Controller
             }
         }
 
-        return view('posts.show', [
+        $data = [
             'post' => $post,
             'related' => $post->isPublished() ? $this->feed->related($post, $viewer) : collect(),
-        ]);
+        ];
+
+        // Lentadan ochilganda — sahifa emas, faqat post bo‘lagi (lenta ustidagi oynaga joylanadi).
+        if ($request->header('X-Fragment') === 'post') {
+            return response()->view('posts.fragment', $data)->header('Vary', 'X-Fragment')->header('Cache-Control', 'no-store, private');
+        }
+
+        return view('posts.show', $data);
     }
 
     public function create(): View

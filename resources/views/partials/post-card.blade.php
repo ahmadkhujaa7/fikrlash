@@ -18,7 +18,7 @@
     $canDismiss = ! $detail && $me && ! $post->isOwnedBy($me) && $post->isPublished();
     $bookmark = 'M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z';
 @endphp
-<article id="post-{{ $post->id }}" data-item
+<article id="post-{{ $post->id }}" data-item @unless ($detail) tabindex="-1" @endunless
          @if ($post->isPublished()) data-track-view data-post-id="{{ $post->id }}" @endif
          @if ($canDismiss) x-data="dismissable('{{ route('api.v1.posts.not-interested', $post) }}')" @endif
          class="px-4 sm:px-6 {{ $detail ? 'pt-8 pb-6' : 'py-5 sm:py-6' }}">
@@ -39,7 +39,7 @@
             @if ($detail)
                 <span class="meta">{{ '@'.$author->username }}</span>
             @else
-                <a href="{{ $url }}" class="meta shrink-0 hover:text-ink">
+                <a href="{{ $url }}" data-post-link class="meta shrink-0 hover:text-ink">
                     <time datetime="{{ $time->toIso8601String() }}" title="{{ Time::full($time) }}">{{ Time::short($time) }}</time>
                 </a>
                 @if ($post->isLong())
@@ -85,15 +85,15 @@
         <div class="prose-post mt-6 !text-[1.375rem] !leading-[1.62]">{!! ContentFormatter::toHtml($post->content) !!}</div>
     @elseif ($post->isLong())
         <div class="prose-post mt-3" x-data="{ more: false }">
-            <div class="clamp-post" :class="{ 'clamp-post': !more }">{!! ContentFormatter::toHtml($post->content) !!}</div>
+            <div class="clamp-post cursor-pointer" :class="{ 'clamp-post': !more }" data-post-open="{{ $url }}">{!! ContentFormatter::toHtml($post->content) !!}</div>
             <button type="button" x-show="!more" @click="more = true" class="mt-2 font-sans text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">Davomini o‘qish</button>
         </div>
     @else
-        <div class="prose-post mt-3 cursor-pointer" x-data @click="$event.target.closest('a,button') || (location.href = '{{ $url }}')">{!! ContentFormatter::toHtml($post->content) !!}</div>
+        <div class="prose-post mt-3 cursor-pointer" data-post-open="{{ $url }}">{!! ContentFormatter::toHtml($post->content) !!}</div>
     @endif
 
     @if ($post->image_path)
-        <a href="{{ $detail ? $post->imageUrl() : $url }}" class="mt-5 block overflow-hidden rounded-2xl bg-sunken" @if ($detail) target="_blank" rel="noopener" @endif>
+        <a href="{{ $detail ? $post->imageUrl() : $url }}" class="mt-5 block overflow-hidden rounded-2xl bg-sunken" @if ($detail) target="_blank" rel="noopener" @else data-post-link @endif>
             <img src="{{ $post->imageUrl() }}" alt="Post rasmi" loading="lazy" class="{{ $detail ? 'w-full' : 'max-h-[28rem] w-full object-cover' }}">
         </a>
     @endif
@@ -125,9 +125,10 @@
                 </a>
             @endauth
 
-            <a href="{{ $url }}#comments" class="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 tabular-nums transition-colors hover:bg-sunken hover:text-ink" aria-label="Izohlar">
+            <a href="{{ $url }}#comments" @unless ($detail) data-post-link @endunless @if ($detail) @click.prevent="focusComment({{ $post->id }})" @endif class="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 tabular-nums transition-colors hover:bg-sunken hover:text-ink" aria-label="Izohlar">
                 <x-ico name="chat" size="size-[18px]" />
-                <span @if ($detail) x-data="{ n: {{ (int) $post->comments_count }} }" @comments-count.window="n = $event.detail" x-text="n || ''" @endif>{{ $post->comments_count ?: '' }}</span>
+                <span x-data="{ n: {{ (int) $post->comments_count }} }" x-text="n || ''"
+                      @post-comments.window="$event.detail.url === '{{ route('posts.comments', $post) }}' && (n = $event.detail.count)">{{ $post->comments_count ?: '' }}</span>
             </a>
 
             <span class="flex items-center gap-1.5 px-2.5 py-1.5 tabular-nums" title="Ko‘rishlar">

@@ -36,10 +36,6 @@ class PostResource extends JsonResource
                 'can_delete' => $viewer->can('delete', $this->resource),
             ]),
             // AI natijasi foydalanuvchiga sodda ko‘rinishda: mavzu va qisqa mazmun.
-            'ai' => $this->when($this->ai_analyzed_at !== null, fn () => [
-                'topic' => $this->ai_topic,
-                'summary' => $this->ai_summary,
-            ]),
             'url' => $this->url(),
             'published_at' => $this->published_at?->toIso8601String(),
             'edited_at' => $this->edited_at?->toIso8601String(),

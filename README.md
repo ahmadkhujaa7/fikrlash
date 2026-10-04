@@ -178,7 +178,7 @@ O‘zgartirishlar faqat migratsiya orqali: `php artisan make:migration ...` → 
 ## 6. API
 
 - Manzil: `/api/v1/`, hujjat: **`/docs/api`** sahifasi va `/docs/openapi.json` (OpenAPI 3.1, Postman/Swagger'ga import qilinadi).
-- Autentifikatsiya: `Authorization: Bearer <token>` (`POST /api/v1/auth/login` yoki sozlamalar → API tokenlar).
+- Autentifikatsiya: `Authorization: Bearer <token>` (`POST /api/v1/auth/login`). Foydalanuvchi sozlamalarida token bo‘limi yo‘q; tokenlarni admin boshqaradi (Admin → API tokenlar). Hujjatlar (`/docs/api`) faqat adminlarga ochiq.
 - Javob formati:
   ```json
   {"success": true, "message": "OK", "data": {...}, "meta": {"pagination": {"next_cursor": "...", "has_more": true}}}
@@ -204,6 +204,7 @@ Post yaratildi → PostCreated event → AnalyzePostJob (queue: ai) → AiProvid
 
 - **Provayderlar:** `claude` (tool-use orqali qat'iy JSON), `openai` (json_object), `fake` (kalitsiz, kalit so‘z qoidalari), `null`. Yangi provayder: `App\Contracts\AiProvider` + `AiManager` ga bitta qator.
 - **Tahlil:** mavzu, kategoriya, kayfiyat, sifat, toksiklik, spam, ta'limiy qiymat, engagement, qisqacha mazmun, kalit so‘zlar.
+- **Ko‘rinish:** AI natijalari faqat admin panelda ko‘rinadi. Foydalanuvchi interfeysi, API va SEO'da AI ma'lumoti yo‘q; AI kalit so‘zlari teg bo‘lmaydi. Tizim ichida faqat moderatsiya signali, lenta tartibi (sifat bahosi, mavzu) uchun ishlatiladi.
 - **Xavfsizlik:** post matni prompt'da `<post>` ichida "ishonchsiz ma'lumot" sifatida beriladi; AI javobi har doim validatsiya qilinadi (tur, 0–100 oraliq, ruxsat etilgan kategoriyalar). AI'ga faqat post matni yuboriladi — telefon, ism yuborilmaydi.
 - **Xarajat nazorati:** bir postga bir vaqtda bitta job; bir xil matn qayta tahlil qilinmaydi (content hash, boshqa postdagi nusxa — keshdan); daqiqalik (`AI_REQUESTS_PER_MINUTE`) va kunlik (`AI_DAILY_LIMIT`) limit; 3 marta qayta urinish. Admin → **AI analitika** sahifasida tokenlar, taxminiy narx, xatolar.
 - **Moderatsiya:** toksiklik ≥ 70 yoki spam ≥ 80 bo‘lsa post `pending_moderation` holatiga o‘tadi va admin tekshiruvini kutadi (sozlamalarda o‘chirish mumkin). Muallifga bildirishnoma boradi.
@@ -371,10 +372,14 @@ Mavzular (kategoriyalar) faqat tizim ichida ishlatiladi: AI har bir postga mavzu
 
 - **Tasdiqlangan belgisi** (`users.verified_at`, `verified_by`): admin panelda foydalanuvchi qatoridagi “Tasdiqlash” amali yoki bir nechtasini birdan (bulk). Belgi lentada, post va izohlarda, profilda, qidiruv va takliflarda, bildirishnomalarda, API'da (`is_verified`) ko‘rinadi. Tasdiqlangan mualliflar qidiruvda birinchi va tavsiyada kichik ustunlikka ega. Har bir o‘zgarish audit log'ga yoziladi, foydalanuvchiga bildirishnoma boradi. Ismga ✓ kabi belgilar yozib soxtalashtirib bo‘lmaydi.
 - **Admin foydalanuvchi yaratadi:** Foydalanuvchilar → “Yangi”. Telefon, parol, rol, holat va tasdiq belgisi bir formada; telefon tasdiqlangan hisoblanadi.
-- **Teglar:** foydalanuvchi matnda `#so‘z` yozadi yoki “+ Teg qo‘shish” maydonidan mavjud tegni tanlaydi / yangisini yaratadi (ko‘pi bilan 5 ta). `#` va `@` yozilganda takliflar chiqadi (`/compose/tags`, `/compose/users`).
+- **Teglar:** foydalanuvchi matnda `#so‘z` yozadi yoki “+ Teg qo‘shish” maydonidan mavjud tegni tanlaydi / yangisini yaratadi (ko‘pi bilan 5 ta). `#` va `@` yozilganda takliflar chiqadi (`/compose/tags`, `/compose/users`). AI teg qo‘shmaydi — teglar faqat foydalanuvchining o‘zidan.
 - **Yozish sahifasi:** qoralama brauzerda avtomatik saqlanadi, rasmni sudrab tashlash va Ctrl+V, “Ko‘rinishi” (oldindan ko‘rish), so‘z soni va o‘qish vaqti, belgilar halqasi, Ctrl+Enter.
 - **Brending:** Tizim sozlamalari → Brending: sayt nomi, logo (yorug‘ va tungi rejim uchun), favicon. Logo yuklanmasa — standart “fikrlash.” so‘z belgisi. Fayllar `storage/app/public/branding` da (`php artisan storage:link` kerak).
 - **Kun savoli:** Tizim sozlamalari → Bosh sahifa. Lenta tepasida chiqadi va yozishga undaydi.
+
+### Lentadan postga o‘tish
+
+Lentadagi post bosilganda sahifa almashmaydi: post lenta ustidagi oynada ochiladi (URL `/posts/{id}` ga o‘zgaradi — ulashish mumkin; serverdan `X-Fragment: post` bilan faqat post bo‘lagi olinadi). “Orqaga”, Esc yoki brauzerning orqaga tugmasi lentaga aynan o‘sha joyga qaytaradi — yuklangan postlar, scroll va yozilayotgan matn saqlanadi, kelgan post bir lahza belgilanadi. Oynada qo‘yilgan like/saqlash va izohlar soni lentadagi kartochkada ham darhol yangilanadi. Lentada turib “Lenta”/logo bosilsa — yuqoriga silliq qaytadi.
 
 ### Qidiruv
 

@@ -28,6 +28,19 @@ Alpine.data('toggle', ({ active, count, url, onKey, offKey, countKey }) => ({
     active,
     count,
     busy: false,
+    _sync: null,
+    // Bir xil post bir nechta joyda (lenta va ochilgan oyna) — holat hammasida bir xil bo‘lsin.
+    init() {
+        this._sync = (e) => {
+            if (e.detail.url !== url || e.detail.origin === this) return;
+            this.active = e.detail.active;
+            if (countKey) this.count = e.detail.count;
+        };
+        window.addEventListener('post-toggle', this._sync);
+    },
+    destroy() {
+        window.removeEventListener('post-toggle', this._sync);
+    },
     async flip() {
         if (this.busy) return;
         this.busy = true;
@@ -45,6 +58,7 @@ Alpine.data('toggle', ({ active, count, url, onKey, offKey, countKey }) => ({
             const data = await api(this.active ? 'POST' : 'DELETE', url);
             this.active = data[onKey] ?? this.active;
             if (countKey && data[countKey] !== undefined) this.count = data[countKey];
+            window.dispatchEvent(new CustomEvent('post-toggle', { detail: { url, active: this.active, count: this.count, origin: this } }));
         } catch (e) {
             Object.assign(this, prev);
             toast(e.message, 'error');
@@ -492,6 +506,7 @@ Alpine.data('comments', ({ url }) => ({
             target?.appendChild(node);
             node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             this.$dispatch('comments-count', data.comments_count);
+            window.dispatchEvent(new CustomEvent('post-comments', { detail: { url: this.url, count: data.comments_count } }));
             this.content = '';
             this.cancelReply();
         } catch (e) {
@@ -553,6 +568,143 @@ window.sharePost = async (url, text) => {
 };
 
 /* ---------- Kategoriyaga obuna ---------- */
+/* ---------- Post oynasi: lentadan postga o‘tish va qaytish ---------- */
+/*
+ * Lentadagi post bosilganda sahifa almashmaydi — post lenta ustida ochiladi (URL o‘zgaradi,
+ * havolani ulashish mumkin). "Orqaga" yoki Esc — lentaga aynan o‘sha joyga qaytadi:
+ * yuklangan postlar, scroll holati, yozilayotgan matn — hammasi joyida qoladi.
+ * Ctrl/Cmd+bosish yoki o‘rta tugma — odatdagidek yangi tabda ochiladi.
+ */
+Alpine.data('postViewer', () => ({
+    open: false,
+    url: null,
+    loading: false,
+    failed: false,
+    pageTitle: document.title,
+    returnTo: null,
+    controller: null,
+
+    init() {
+        document.addEventListener('click', (e) => this.intercept(e));
+        window.addEventListener('popstate', (e) => {
+            if (e.state?.fikrlashPost) this.show(e.state.fikrlashPost, { push: false });
+            else if (this.open) this.hide();
+        });
+    },
+
+    intercept(e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        let url = null;
+        const link = e.target.closest('a[data-post-link]');
+        if (link) {
+            url = link.href;
+        } else {
+            const area = e.target.closest('[data-post-open]');
+            // Matn ichidagi havola/tugma o‘zi ishlasin; matn belgilanayotgan bo‘lsa — ochmaymiz.
+            if (!area || e.target.closest('a, button, input, textarea, label')) return;
+            if (String(window.getSelection?.() ?? '').trim()) return;
+            url = area.dataset.postOpen;
+        }
+        if (!url || new URL(url, location.href).origin !== location.origin) return;
+        e.preventDefault();
+        this.show(url, { from: e.target.closest('article') });
+    },
+
+    async show(url, { push = true, from = null } = {}) {
+        if (!this.open) {
+            this.pageTitle = document.title;
+            this.returnTo = from;
+        }
+        if (push) history.pushState({ fikrlashPost: url }, '', url);
+        this.url = url;
+        this.open = true;
+        this.failed = false;
+        this.loading = true;
+        this.$refs.body.innerHTML = '';
+        this.$refs.scroller.scrollTop = 0;
+
+        this.controller?.abort();
+        const controller = (this.controller = new AbortController());
+        try {
+            const res = await fetch(url.split('#')[0], {
+                headers: { 'X-Fragment': 'post', 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+                credentials: 'same-origin',
+                cache: 'no-store',
+                signal: controller.signal,
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            this.$refs.body.innerHTML = await res.text();
+            const title = this.$refs.body.firstElementChild?.dataset.title;
+            if (title) document.title = title;
+            initViewTracking(this.$refs.body);
+            this.$nextTick(() => {
+                if (url.includes('#comments')) window.focusComment(Number(url.match(/posts\/(\d+)/)?.[1]));
+                else this.$refs.close.focus({ preventScroll: true });
+            });
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            this.failed = true;
+        } finally {
+            if (this.controller === controller) this.loading = false;
+        }
+    },
+
+    close() {
+        if (history.state?.fikrlashPost) history.back();
+        else this.hide();
+    },
+
+    hide() {
+        this.controller?.abort();
+        this.open = false;
+        document.title = this.pageTitle;
+        // Oyna yopilgach ichidagi komponentlar (o‘qish vaqti va h.k.) to‘g‘ri yakunlansin.
+        setTimeout(() => {
+            if (!this.open) this.$refs.body.innerHTML = '';
+        }, 200);
+        const card = this.returnTo;
+        this.returnTo = null;
+        if (card?.isConnected) {
+            card.focus({ preventScroll: true });
+            card.classList.remove('flash');
+            void card.offsetWidth;
+            card.classList.add('flash');
+        }
+    },
+}));
+
+/** Lentada turib "Lenta"/logo bosilsa — sahifa qayta yuklanmaydi, yuqoriga silliq qaytadi. */
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[data-home-link]');
+    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    if (location.pathname !== '/' || history.state?.fikrlashPost) return;
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+});
+
+/** "Orqaga": sayt ichidan kelgan bo‘lsa — tarixda orqaga (lenta o‘sha joyidan davom etadi), aks holda zaxira sahifaga. */
+window.backOr = (fallback) => {
+    let internal = false;
+    try {
+        internal = document.referrer && new URL(document.referrer).origin === location.origin;
+    } catch {
+        internal = false;
+    }
+    if (internal && history.length > 1) history.back();
+    else location.href = fallback;
+};
+
+/** Izoh maydoniga o‘tish (izoh tugmasi bosilganda). Mehmon uchun — izohlar bo‘limiga. */
+window.focusComment = (postId) => {
+    const input = document.getElementById(`comment-input-${postId}`);
+    if (input) {
+        input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        input.focus({ preventScroll: true });
+    } else {
+        document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
 /* ---------- Real vaqtdagi qidiruv (qidiruv sahifasi) ---------- */
 Alpine.data('liveSearch', ({ url, q, type }) => ({
     q,

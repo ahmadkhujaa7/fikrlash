@@ -32,9 +32,11 @@ class AiAnalysisTest extends TestCase
         $this->assertSame('dasturlash', $post->ai_category);
         // Kategoriya tanlanmagan edi — AI taklifi qo‘yildi.
         $this->assertSame(Category::query()->where('slug', 'dasturlash')->value('id'), $post->category_id);
-        // Foydalanuvchi teg yozmagan — AI kalit so‘zlari teg bo‘ldi (tavsiya tizimi postni "tushunadi").
-        $this->assertGreaterThan(0, $post->tags()->count());
-        $this->assertLessThanOrEqual(4, $post->tags()->count());
+        // AI natijalari foydalanuvchiga ko‘rinmaydi: teg qo‘shilmaydi, post sahifasi va API'da AI ma'lumoti yo‘q.
+        $this->assertSame(0, $post->tags()->count());
+        $post->forceFill(['ai_summary' => 'AI_XULOSA_MATNI', 'ai_topic' => 'AI_MAVZU'])->saveQuietly();
+        $this->get("/posts/{$post->id}")->assertOk()->assertDontSee('AI_XULOSA_MATNI')->assertDontSee('AI_MAVZU');
+        $this->getJson("/api/v1/posts/{$post->id}")->assertOk()->assertJsonMissingPath('data.ai')->assertDontSee('AI_XULOSA_MATNI');
     }
 
     public function test_identical_content_is_not_analyzed_twice(): void

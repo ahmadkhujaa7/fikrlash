@@ -130,6 +130,11 @@
         -webkit-appearance: none;
     }
 
+    article[tabindex='-1']:focus-visible {
+        outline-offset: -2px;
+        border-radius: 0;
+    }
+
     [x-cloak] {
         display: none !important;
     }
@@ -302,6 +307,15 @@
     .pop {
         animation: pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1);
     }
+}
+
+/* Post oynasi yopilgach — qaysi postdan kelganingizni bir lahzaga ko‘rsatadi */
+.flash {
+    animation: flash 1.2s ease-out;
+}
+@keyframes flash {
+    0%, 30% { background-color: var(--lapis-soft); }
+    100% { background-color: transparent; }
 }
 
 @keyframes pop {

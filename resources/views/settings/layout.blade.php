@@ -12,7 +12,6 @@
     <x-tabs :items="[
         ['label' => 'Profil', 'href' => route('settings.profile'), 'active' => request()->routeIs('settings.profile')],
         ['label' => 'Xavfsizlik', 'href' => route('settings.security'), 'active' => request()->routeIs('settings.security')],
-        ['label' => 'API tokenlar', 'href' => route('settings.tokens'), 'active' => request()->routeIs('settings.tokens')],
         ['label' => 'Akkaunt', 'href' => route('settings.account'), 'active' => request()->routeIs('settings.account')],
     ]" />
     @if (session('status'))

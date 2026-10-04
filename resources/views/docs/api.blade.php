@@ -21,7 +21,7 @@
         <ol class="mt-2 list-decimal space-y-1 pl-5 text-[15px] text-ink-soft">
             <li><code>POST /auth/login</code> ga <code>login</code> (telefon yoki username) va <code>password</code> yuboring.</li>
             <li>Javobdagi <code>data.token</code> ni har so‘rovda yuboring: <code>Authorization: Bearer &lt;token&gt;</code></li>
-            <li>Tokenlar 90 kun amal qiladi; <a href="{{ route('settings.tokens') }}" class="text-lapis hover:underline">sozlamalarda</a> yoki <code>DELETE /tokens/{id}</code> orqali bekor qilinadi.</li>
+            <li>Tokenlar 90 kun amal qiladi; <a href="/admin/api-tokens" class="text-lapis hover:underline">sozlamalarda</a> yoki <code>DELETE /tokens/{id}</code> orqali bekor qilinadi.</li>
         </ol>
         <pre class="mt-4 overflow-x-auto rounded-2xl bg-ink p-4 text-sm text-paper"><code>curl -X POST {{ url('/api/v1/auth/login') }} \
   -H "Accept: application/json" -H "Content-Type: application/json" \

@@ -56,7 +56,6 @@
         <a href="{{ route('about') }}" class="hover:text-ink">Loyiha haqida</a>
         <a href="{{ route('terms') }}" class="hover:text-ink">Shartlar</a>
         <a href="{{ route('privacy') }}" class="hover:text-ink">Maxfiylik</a>
-        <a href="{{ route('docs.api') }}" class="hover:text-ink">API</a>
         <span>© {{ now()->year }} {{ \App\Support\Branding::name() }}</span>
     </footer>
 </div>

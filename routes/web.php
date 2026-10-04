@@ -53,9 +53,14 @@ Route::get('/@{user}/following', [ProfileController::class, 'following'])->name(
 Route::view('/about', 'pages.about')->name('about');
 Route::view('/terms', 'pages.terms')->name('terms');
 Route::view('/privacy', 'pages.privacy')->name('privacy');
-Route::view('/docs/api', 'docs.api')->name('docs.api');
+// API hujjatlari — faqat adminlar uchun (oddiy foydalanuvchiga kerak emas).
+Route::middleware('auth')->group(function () {
+    Route::get('/docs/api', fn () => auth()->user()->isAdmin() ? view('docs.api') : abort(404))->name('docs.api');
+    Route::get('/docs/openapi.json', fn () => auth()->user()->isAdmin()
+        ? response()->file(base_path('docs/openapi.json'), ['Content-Type' => 'application/json'])
+        : abort(404))->name('docs.openapi');
+});
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
-Route::get('/docs/openapi.json', fn () => response()->file(base_path('docs/openapi.json'), ['Content-Type' => 'application/json']))->name('docs.openapi');
 
 // ---- Tizimga kirganlar ----
 Route::middleware('auth')->group(function () {
@@ -85,10 +90,6 @@ Route::middleware('auth')->group(function () {
         Route::put('/password', [Settings\SecuritySettingsController::class, 'updatePassword'])->name('password');
         Route::post('/phone', [Settings\SecuritySettingsController::class, 'requestPhoneChange'])->middleware('throttle:otp-send')->name('phone');
         Route::post('/phone/verify', [Settings\SecuritySettingsController::class, 'verifyPhoneChange'])->middleware('throttle:otp-verify')->name('phone.verify');
-
-        Route::get('/tokens', [Settings\ApiTokenController::class, 'index'])->name('tokens');
-        Route::post('/tokens', [Settings\ApiTokenController::class, 'store'])->name('tokens.store');
-        Route::delete('/tokens/{token}', [Settings\ApiTokenController::class, 'destroy'])->whereNumber('token')->name('tokens.destroy');
 
         Route::get('/account', [Settings\AccountSettingsController::class, 'edit'])->name('account');
         Route::post('/deactivate', [Settings\AccountSettingsController::class, 'deactivate'])->name('deactivate');

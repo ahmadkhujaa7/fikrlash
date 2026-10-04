@@ -85,19 +85,25 @@ export function readTimer(url) {
     return {
         seconds: 0,
         sent: 0,
+        _tick: null,
+        _onHide: null,
         init() {
-            const tick = setInterval(() => !document.hidden && this.seconds++, 1000);
-            const send = () => {
-                const delta = this.seconds - this.sent;
-                if (delta < 3) return;
-                this.sent = this.seconds;
-                api('POST', url, { seconds: delta }, { keepalive: true }).catch(() => {});
-            };
-            document.addEventListener('visibilitychange', () => document.hidden && send());
-            window.addEventListener('pagehide', () => {
-                send();
-                clearInterval(tick);
-            });
+            this._tick = setInterval(() => !document.hidden && this.seconds++, 1000);
+            this._onHide = () => document.hidden && this.send();
+            document.addEventListener('visibilitychange', this._onHide);
+            window.addEventListener('pagehide', () => this.send());
+        },
+        send() {
+            const delta = this.seconds - this.sent;
+            if (delta < 3) return;
+            this.sent = this.seconds;
+            api('POST', url, { seconds: delta }, { keepalive: true }).catch(() => {});
+        },
+        // Lenta ustidagi oyna yopilganda (element olib tashlanadi) — o‘qish vaqti yuboriladi.
+        destroy() {
+            this.send();
+            clearInterval(this._tick);
+            document.removeEventListener('visibilitychange', this._onHide);
         },
     };
 }
