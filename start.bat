@@ -11,6 +11,17 @@ if not exist vendor\autoload.php (echo vendor papkasi yo'q - avval setup.bat ni 
 if not exist .env (echo .env fayli yo'q - avval setup.bat ni ishga tushiring. & pause & exit /b 1)
 if not exist public\build\manifest.json (echo CSS/JS yig'ilmagan - setup.bat ni qayta ishga tushiring. & pause & exit /b 1)
 
+rem Yangilanishlardan keyin: bazaga yangi jadvallar qo'shiladi (mavjud ma'lumot o'chmaydi).
+php artisan migrate --force >nul 2>&1 || echo Ogohlantirish: bazani yangilab bo'lmadi - "php artisan migrate" ni qo'lda ishga tushiring.
+
+rem Dizayn fayllari yangilangan bo'lsa - CSS/JS qayta yig'iladi.
+php -r "$m=@filemtime('public/build/manifest.json'); $t=0; foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator('resources',FilesystemIterator::SKIP_DOTS)) as $f){$t=max($t,$f->getMTime());} exit($t>$m?1:0);" || (
+    where npm >nul 2>nul && (
+        echo Dizayn yangilangan - CSS/JS yig'ilmoqda, biroz kuting...
+        call npm run build >nul 2>&1 || echo Ogohlantirish: "npm run build" xato berdi.
+    )
+)
+
 rem Port 8000 band bo'lsa (avvalgi server ochiq qolgan) - ogohlantiramiz.
 netstat -ano | findstr /r /c:":8000 .*LISTENING" >nul && (
     echo Port 8000 band: Fikrlash allaqachon ishlayotgan bo'lishi mumkin. Brauzerda http://localhost:8000 ni oching
