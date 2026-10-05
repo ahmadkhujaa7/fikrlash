@@ -3,6 +3,8 @@
     $announcement = \App\Models\Setting::read('announcement');
     // Yozish sahifalarida mobil pastki menyu yashiriladi — klaviatura va asboblar paneli uchun joy.
     $writing = request()->routeIs('posts.create', 'posts.edit');
+    // Suhbat oynasi: o‘z balandligi bor (mobilda butun ekran), pastki menyu yashiriladi.
+    $chatScreen = request()->routeIs('messages.show');
     // "Ekran" sahifalari (post, yozish) o‘z ilova paneliga ega — mobilda umumiy sarlavha o‘rniga u chiqadi.
     $screen = View::hasSection('screen');
     $tabs = [
@@ -15,7 +17,7 @@
 <head>
     @include('layouts.head')
 </head>
-<body @auth data-auth="1" @endauth @if (session('toast')) data-toast="{{ session('toast') }}" @endif
+<body @auth data-auth="1" data-unread-notifications="{{ $unreadNotifications }}" data-unread-messages="{{ $unreadMessages }}" @endauth @if (session('toast')) data-toast="{{ session('toast') }}" @endif
       x-data="reporter" @report.window="show($event.detail)">
 <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-surface focus:px-4 focus:py-2">Asosiy qismga o‘tish</a>
 
@@ -51,9 +53,13 @@
         <div class="{{ request()->routeIs('search') ? 'ml-auto' : 'ml-auto md:ml-0' }} flex items-center gap-1.5">
             @auth
                 <a href="{{ route('posts.create') }}" class="btn btn-primary btn-sm mr-1 hidden md:inline-flex xl:hidden"><x-ico name="pencil" size="size-4" /> Yozish</a>
-                <a href="{{ route('saved.index') }}" class="icon-btn md:hidden" aria-label="Saqlanganlar"><x-ico name="bookmark" /></a>
+                {{-- Xabarlar: mobilda va planshetda sarlavhada (kompyuterda — chap menyuda) --}}
+                <a href="{{ route('messages.index') }}" class="icon-btn relative xl:hidden" aria-label="Xabarlar" x-data="unreadBadge('messages')">
+                    <x-ico name="chat" />
+                    <span x-show="count > 0" x-cloak class="absolute right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-lapis px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-paper" x-text="count > 99 ? '99+' : count"></span>
+                </a>
                 <a href="{{ route('notifications.index') }}" class="relative hidden rounded-full p-2 text-muted hover:text-ink md:block xl:hidden" aria-label="Bildirishnomalar"
-                   x-data="unreadBadge({{ $unreadNotifications }})">
+                   x-data="unreadBadge('notifications')">
                     <x-ico name="bell" />
                     <span x-show="count > 0" x-cloak class="absolute right-1.5 top-1.5 size-2 rounded-full bg-anor ring-2 ring-paper"></span>
                 </a>
@@ -93,8 +99,8 @@
         </div>
     </aside>
 
-    <main id="main" class="mx-auto min-w-0 max-w-[680px] {{ $writing ? 'pb-0 md:pb-16' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-16' }} sm:pt-3 lg:mx-0 lg:max-w-none">
-        <div class="sheet {{ $screen ? 'min-h-[100dvh]' : 'min-h-[calc(100dvh-3.5rem)]' }} {{ $writing ? '' : 'pb-4' }} sm:min-h-[calc(100vh-7rem)]">
+    <main id="main" class="mx-auto min-w-0 max-w-[680px] {{ $chatScreen ? 'pb-0 md:pb-4' : ($writing ? 'pb-0 md:pb-16' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-16') }} sm:pt-3 lg:mx-0 lg:max-w-none">
+        <div class="sheet {{ $chatScreen ? '' : (($screen ? 'min-h-[100dvh]' : 'min-h-[calc(100dvh-3.5rem)]').' sm:min-h-[calc(100vh-7rem)]') }} {{ $writing || $chatScreen ? '' : 'pb-4' }}">
             @yield('content')
         </div>
     </main>
@@ -111,7 +117,7 @@
 </div>
 
 {{-- Mobil: pastki menyu (ilovadagidek — belgi va yozuv; o‘rtada yozish tugmasi) --}}
-@unless ($writing)
+@unless ($writing || $chatScreen)
 <nav class="tab-bar" aria-label="Pastki menyu">
     <div class="mx-auto grid max-w-md grid-cols-5 items-center px-1">
         @foreach ($tabs as [$label, $icon, $href, $active])
@@ -124,7 +130,7 @@
             <span class="tab-compose"><x-ico name="plus" size="size-6" stroke-width="2.2" /></span>
         </a>
         @auth
-            <a href="{{ route('notifications.index') }}" data-tab class="tab-item" @if (request()->routeIs('notifications.*')) aria-current="page" @endif x-data="unreadBadge({{ $unreadNotifications }})">
+            <a href="{{ route('notifications.index') }}" data-tab class="tab-item" @if (request()->routeIs('notifications.*')) aria-current="page" @endif x-data="unreadBadge('notifications')">
                 <span class="relative">
                     <x-ico name="bell" size="size-6" :solid="request()->routeIs('notifications.*')" />
                     <span x-show="count > 0" x-cloak class="absolute -right-1 -top-1 grid min-w-[17px] place-items-center rounded-full bg-anor px-1 text-[10px] font-semibold leading-[17px] text-white ring-2 ring-paper" x-text="count > 99 ? '99+' : count"></span>

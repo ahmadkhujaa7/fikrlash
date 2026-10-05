@@ -8,6 +8,7 @@ use App\Models\PersonalAccessToken;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\Chat\ChatService;
 use App\Services\Sms\ArraySmsProvider;
 use App\Services\Sms\EskizSmsProvider;
 use App\Services\Sms\LogSmsProvider;
@@ -85,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.app', function ($view) {
             $user = auth()->user();
             $view->with('unreadNotifications', $user ? app(NotificationService::class)->unreadCount($user) : 0);
+            $view->with('unreadMessages', $user ? app(ChatService::class)->unreadCount($user) : 0);
         });
     }
 
@@ -114,6 +116,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('views', fn (Request $r) => Limit::perMinute(120)->by('views:'.$by($r)));
         RateLimiter::for('reports', fn (Request $r) => Limit::perHour(20)->by('reports:'.$by($r)));
         RateLimiter::for('uploads', fn (Request $r) => Limit::perHour(30)->by('uploads:'.$by($r)));
+        // Xabarlar: yuborish/tahrir/reaksiya va qisqa so‘rovlar (poll + "yozmoqda").
+        RateLimiter::for('chat-send', fn (Request $r) => [Limit::perMinute(40)->by('chat:'.$by($r)), Limit::perDay(3000)->by('chat-day:'.$by($r))]);
+        RateLimiter::for('chat-poll', fn (Request $r) => Limit::perMinute(90)->by('chat-poll:'.$by($r)));
         // Maqola ichidagi rasmlar: bitta maqolada 30 tagacha bo‘lishi mumkin.
         RateLimiter::for('media', fn (Request $r) => [Limit::perMinute(20)->by('media:'.$by($r)), Limit::perDay(200)->by('media-day:'.$by($r))]);
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(120)->by('api:'.$by($r)));

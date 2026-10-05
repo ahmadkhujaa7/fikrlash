@@ -3,11 +3,13 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\ComposeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -83,6 +85,28 @@ Route::middleware('auth')->group(function () {
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
     Route::get('/saved', [SavedController::class, 'index'])->name('saved.index');
+    Route::get('/badges', BadgeController::class)->middleware('throttle:chat-poll')->name('badges');
+
+    // Shaxsiy xabarlar
+    Route::prefix('messages')->name('messages.')->controller(MessageController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/with/{user}', 'with')->name('with');
+        Route::get('/{conversation}', 'show')->whereNumber('conversation')->name('show');
+        Route::get('/{conversation}/poll', 'poll')->whereNumber('conversation')->middleware('throttle:chat-poll')->name('poll');
+        Route::get('/{conversation}/history', 'history')->whereNumber('conversation')->name('history');
+        Route::post('/{conversation}', 'store')->whereNumber('conversation')->middleware('throttle:chat-send')->name('store');
+        Route::post('/{conversation}/read', 'read')->whereNumber('conversation')->name('read');
+        Route::post('/{conversation}/typing', 'typing')->whereNumber('conversation')->middleware('throttle:chat-poll')->name('typing');
+        Route::post('/{conversation}/block', 'block')->whereNumber('conversation')->name('block');
+        Route::delete('/{conversation}/block', 'unblock')->whereNumber('conversation')->name('unblock');
+        Route::post('/{conversation}/clear', 'clear')->whereNumber('conversation')->name('clear');
+        Route::scopeBindings()->whereNumber(['conversation', 'message'])->group(function () {
+            Route::patch('/{conversation}/{message}', 'update')->middleware('throttle:chat-send')->name('update');
+            Route::delete('/{conversation}/{message}', 'destroy')->name('destroy');
+            Route::post('/{conversation}/{message}/react', 'react')->middleware('throttle:chat-send')->name('react');
+            Route::get('/{conversation}/{message}/voice', 'voice')->name('voice');
+        });
+    });
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
 
@@ -98,6 +122,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/phone/verify', [Settings\SecuritySettingsController::class, 'verifyPhoneChange'])->middleware('throttle:otp-verify')->middleware('not-impersonating')->name('phone.verify');
 
         Route::get('/account', [Settings\AccountSettingsController::class, 'edit'])->name('account');
+        Route::put('/messaging', [Settings\AccountSettingsController::class, 'updateMessaging'])->name('messaging');
         Route::post('/deactivate', [Settings\AccountSettingsController::class, 'deactivate'])->middleware('not-impersonating')->name('deactivate');
         Route::delete('/account', [Settings\AccountSettingsController::class, 'destroy'])->middleware('not-impersonating')->name('delete');
         Route::get('/export', [Settings\AccountSettingsController::class, 'export'])->name('export');

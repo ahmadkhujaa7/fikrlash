@@ -82,6 +82,20 @@ return [
         'webp_quality' => 82,
     ],
 
+    // Shaxsiy xabarlar. Ovozli xabarlar ommaviy emas: "local" (storage/app/private) diskda saqlanadi
+    // va faqat suhbat ishtirokchilariga himoyalangan manzil orqali beriladi.
+    'chat' => [
+        'message_max' => 4000,
+        'voice_disk' => env('CHAT_VOICE_DISK', 'local'),
+        'voice_max_seconds' => 300,
+        'voice_max_kb' => 8192,
+        'edit_window_hours' => null, // null = cheklovsiz tahrirlash
+        'poll_seconds' => 3,
+        'page_size' => 40,
+        'reactions' => ['❤️', '👍', '😂', '😮', '😢', '🔥', '🙏'],
+        'daily_new_conversations' => 40, // spamga qarshi: kuniga nechta yangi odamga yozish mumkin
+    ],
+
     'feed' => [
         'per_page' => 20,
         'candidate_days' => 14,

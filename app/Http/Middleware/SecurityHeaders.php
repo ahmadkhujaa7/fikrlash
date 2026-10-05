@@ -26,7 +26,8 @@ class SecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+        // Mikrofon — faqat o‘z saytimizda (ovozli xabar yozish uchun).
+        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
 
         if (config('fikrlash.security.hsts') && $request->isSecure()) {
@@ -59,6 +60,8 @@ class SecurityHeaders
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$dev}",
             "font-src 'self' data: https://fonts.bunny.net",
             "img-src 'self' data: blob: {$media}",
+            // Ovozli xabar: yozib olingandan keyin yuborilguncha blob: dan eshitiladi.
+            "media-src 'self' blob: {$media}",
             "connect-src 'self' {$dev} {$devWs}",
             "object-src 'none'",
             "base-uri 'self'",

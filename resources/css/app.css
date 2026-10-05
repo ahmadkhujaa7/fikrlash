@@ -495,6 +495,107 @@
         }
     }
 
+    /* ---- Xabarlar ---- */
+    /* Kompyuterda — varaq ichida; mobilda — butun ekran (klaviatura ochilganda ko‘rinadigan qismga moslashadi, JS) */
+    .chat-screen {
+        @apply flex flex-col overflow-hidden bg-paper sm:rounded-[28px];
+        height: calc(100dvh - 6.25rem);
+    }
+    .chat-composer {
+        @apply border-t border-line bg-paper/95 px-2 pt-2 backdrop-blur-xl sm:px-4;
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    }
+    .bubble {
+        @apply relative rounded-[20px] px-3.5 pb-[7px] pt-[7px] text-[15.5px] leading-[1.42];
+        overflow-wrap: anywhere;
+        -webkit-touch-callout: none;
+    }
+    .bubble::after {
+        content: '';
+        display: table;
+        clear: both;
+    }
+    .bubble-mine {
+        @apply text-white;
+        background-image: linear-gradient(160deg, var(--brand-a), var(--brand-b));
+    }
+    .bubble-theirs {
+        @apply bg-sunken text-ink;
+    }
+    .bubble a.link,
+    .bubble a.mention,
+    .bubble a.hashtag {
+        @apply underline underline-offset-2;
+    }
+    .bubble-theirs a.link,
+    .bubble-theirs a.mention,
+    .bubble-theirs a.hashtag {
+        @apply text-lapis decoration-lapis/40;
+    }
+    .bubble-mine a.link,
+    .bubble-mine a.mention,
+    .bubble-mine a.hashtag {
+        @apply text-white decoration-white/50;
+    }
+    /* Vaqt matn oxirida o‘ng pastda: oxirgi qatorga sig‘masa — keyingi qatorga tushadi */
+    .msg-meta {
+        @apply relative top-[5px] float-right -mr-1 ml-2.5 inline-flex items-center gap-0.5 text-[11px] leading-4 tabular-nums opacity-75 select-none;
+    }
+    .msg-meta-block {
+        @apply float-none -mt-[17px] flex justify-end;
+    }
+    .bubble-mine .msg-meta {
+        @apply text-white opacity-80;
+    }
+    .reply-quote {
+        @apply mb-1.5 block w-full max-w-[280px] rounded-xl border-l-[3px] px-2.5 py-1.5 text-left;
+    }
+    .bubble-mine .reply-quote {
+        @apply border-white/70 bg-white/15;
+    }
+    .bubble-theirs .reply-quote {
+        @apply border-lapis bg-paper/70;
+    }
+    .bubble-theirs .reply-quote > span:first-child {
+        @apply text-lapis;
+    }
+    .voice-btn {
+        @apply grid size-10 shrink-0 place-items-center rounded-full transition-transform active:scale-95;
+    }
+    .bubble-mine .voice-btn {
+        @apply bg-white text-lapis;
+    }
+    .bubble-theirs .voice-btn {
+        @apply bg-lapis text-white;
+    }
+    .reaction-chip {
+        @apply inline-flex h-7 items-center gap-1 rounded-full bg-paper px-2 text-[15px] leading-none shadow-[0_1px_3px_rgb(0_0_0/0.12)] ring-1 ring-line transition-transform active:scale-95;
+    }
+    .reaction-chip.is-mine {
+        @apply bg-lapis-soft text-lapis ring-lapis/40;
+    }
+    .send-btn {
+        @apply grid size-11 shrink-0 place-items-center rounded-full text-white transition-transform active:scale-95 disabled:opacity-40;
+        background-image: linear-gradient(160deg, var(--brand-a), var(--brand-b));
+        box-shadow: 0 8px 18px -10px rgb(48 73 209 / 0.8);
+    }
+    .sheet-item {
+        @apply flex w-full items-center gap-3.5 bg-sunken/60 px-4 py-3.5 text-left text-[15px] text-ink transition-colors hover:bg-sunken;
+    }
+    .sheet-item + .sheet-item {
+        @apply border-t border-line;
+    }
+    .typing-dot {
+        @apply size-2 rounded-full bg-muted;
+        animation: typing 1.2s infinite ease-in-out;
+    }
+    .rec-dot {
+        animation: rec 1s infinite;
+    }
+    .msg-flash .bubble {
+        animation: msg-flash 1.2s ease-out;
+    }
+
     /* Yoqtirish — bosilganda yurakcha "tepadi" */
     .pop {
         animation: pop 0.38s cubic-bezier(0.3, 1.6, 0.5, 1);
@@ -508,6 +609,34 @@
 @keyframes flash {
     0%, 30% { background-color: var(--lapis-soft); }
     100% { background-color: transparent; }
+}
+
+@keyframes typing {
+    0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes rec {
+    50% { opacity: 0.25; }
+}
+@keyframes msg-flash {
+    0%, 35% { box-shadow: 0 0 0 3px var(--lapis-soft), 0 0 0 5px color-mix(in srgb, var(--lapis) 35%, transparent); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Mobil suhbat: butun ekran, sahifa o‘zi aylanmaydi (faqat xabarlar ro‘yxati) */
+@media (max-width: 767px) {
+    .chat-screen {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 40;
+        height: 100dvh;
+        border-radius: 0;
+    }
+    html.chat-lock,
+    html.chat-lock body {
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
 }
 
 @keyframes pop {

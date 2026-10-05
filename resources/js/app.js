@@ -4,6 +4,7 @@ import focus from '@alpinejs/focus';
 import { api, fetchHtml, postForm } from './api';
 import { initViewTracking, readTimer } from './views';
 import { captureFeed, rememberFeedChunk, restoreFeedPosition } from './navigation';
+import { registerBadges, registerInbox, registerThread } from './chat';
 
 window.Alpine = Alpine;
 Alpine.plugin(intersect);
@@ -1505,20 +1506,10 @@ Alpine.data('dismissable', (url) => ({
 }));
 
 /* ---------- O‘qilmagan bildirishnomalar (har 60 soniyada) ---------- */
-Alpine.data('unreadBadge', (initial) => ({
-    count: initial,
-    init() {
-        if (!document.body.dataset.auth) return;
-        setInterval(async () => {
-            if (document.hidden) return;
-            try {
-                this.count = (await api('GET', '/api/v1/notifications/unread-count')).unread;
-            } catch {
-                /* jim */
-            }
-        }, 60000);
-    },
-}));
+/* ---------- Belgilar va shaxsiy xabarlar (chat.js) ---------- */
+registerBadges(Alpine);
+registerInbox(Alpine);
+registerThread(Alpine);
 
 Alpine.data('readTimer', readTimer);
 

@@ -2,6 +2,22 @@
 @section('title', 'Akkaunt')
 
 @section('settings')
+    {{-- Shaxsiy xabarlar: kim yoza oladi --}}
+    <section>
+        <h2 class="font-semibold">Shaxsiy xabarlar</h2>
+        <p class="mt-1 text-sm text-ink-soft">Kim sizga birinchi bo‘lib yoza oladi. Siz yozgan odam har doim javob bera oladi.</p>
+        <form method="POST" action="{{ route('settings.messaging') }}" class="mt-4 space-y-2" x-data @change="$el.requestSubmit()">
+            @csrf @method('PUT')
+            @foreach (\App\Enums\MessagePrivacy::cases() as $option)
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm transition-colors has-[:checked]:border-lapis has-[:checked]:bg-lapis-soft/50">
+                    <input type="radio" name="messages_from" value="{{ $option->value }}" @checked(auth()->user()->messages_from === $option) class="accent-[var(--lapis)]">
+                    {{ $option->getLabel() }}
+                </label>
+            @endforeach
+            <noscript><button type="submit" class="btn btn-secondary btn-sm mt-2">Saqlash</button></noscript>
+        </form>
+    </section>
+
     <section>
         <h2 class="font-semibold">Ma’lumotlarimni yuklab olish</h2>
         <p class="mt-1 text-sm text-ink-soft">Profil, postlar, izohlar va obunalaringiz JSON faylda.</p>

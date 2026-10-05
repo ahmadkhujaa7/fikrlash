@@ -18,6 +18,16 @@
                             <x-dropdown-item icon="link" @click="sharePost('{{ $user->profileUrl() }}', ''); open = false">Profil havolasi</x-dropdown-item>
                             <x-dropdown-item icon="flag" danger @click="$dispatch('report', { type: 'user', id: {{ $user->id }} }); open = false">Shikoyat qilish</x-dropdown-item>
                         </x-dropdown>
+                        @php
+                            $chat = app(\App\Services\Chat\ChatService::class);
+                            $canChat = \App\Models\Conversation::query()->where('pair_key', \App\Models\Conversation::pairKey(auth()->id(), $user->id))->exists()
+                                || $chat->cannotMessage(auth()->user(), $user) === null;
+                        @endphp
+                        @if ($canChat)
+                            <a href="{{ route('messages.with', $user->username) }}" class="btn btn-secondary !px-3 sm:!px-4" aria-label="Xabar yozish">
+                                <x-ico name="chat" size="size-[18px]" /><span class="hidden sm:inline">Xabar</span>
+                            </a>
+                        @endif
                         @include('partials.follow-button', ['target' => $user, 'following' => $isFollowing])
                     @else
                         <a href="{{ route('login') }}" class="btn btn-primary">Obuna bo‘lish</a>

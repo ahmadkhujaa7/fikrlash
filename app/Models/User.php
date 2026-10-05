@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\Enums\MessagePrivacy;
 use App\Enums\PostStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
@@ -45,6 +46,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     protected $attributes = [
         'role' => 'user',
         'status' => 'active',
+        'messages_from' => 'everyone',
         'followers_count' => 0,
         'following_count' => 0,
     ];
@@ -62,6 +64,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'password' => 'hashed',
             'role' => UserRole::class,
             'status' => UserStatus::class,
+            'messages_from' => MessagePrivacy::class,
             'gender' => Gender::class,
             'followers_count' => 'integer',
             'following_count' => 'integer',

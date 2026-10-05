@@ -3,6 +3,7 @@
     $items = $me ? [
         ['Lenta', 'home', route('home'), request()->routeIs('home')],
         ['Qidiruv', 'search', route('search'), request()->routeIs('search')],
+        ['Xabarlar', 'chat', route('messages.index'), request()->routeIs('messages.*')],
         ['Bildirishnomalar', 'bell', route('notifications.index'), request()->routeIs('notifications.*')],
         ['Saqlanganlar', 'bookmark', route('saved.index'), request()->routeIs('saved.*')],
         ['Profil', 'user', route('profile.show', $me->username), request()->is('@'.$me->username.'*')],
@@ -20,8 +21,11 @@
             <span class="relative">
                 <x-ico :name="$icon" size="size-[22px]" />
                 @if ($icon === 'bell')
-                    <span x-data="unreadBadge({{ $unreadNotifications ?? 0 }})" x-show="count > 0" x-cloak
-                          class="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-lapis ring-2 ring-canvas"></span>
+                    <span x-data="unreadBadge('notifications')" x-show="count > 0" x-cloak
+                          class="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-anor ring-2 ring-canvas"></span>
+                @elseif ($icon === 'chat')
+                    <span x-data="unreadBadge('messages')" x-show="count > 0" x-cloak x-text="count > 99 ? '99+' : count"
+                          class="absolute -right-2 -top-1.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-lapis px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-canvas"></span>
                 @endif
             </span>
             {{ $label }}

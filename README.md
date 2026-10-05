@@ -405,11 +405,21 @@ Post alohida sahifada ochiladi (`/posts/{id}`): havolani ulashish, yangilash va 
 - Rasmlar darhol `POST /compose/images` ga yuklanadi (EXIF o‘chadi, WebP, o‘lchami saqlanadi) va `media_uploads` da muallifga yoziladi; post saqlanganda biriktiriladi. Server bloklarni qayta tekshiradi: faqat muallifning o‘z rasmlari, uzunlik chegaralari (`config/fikrlash.php → articles`). Tahrirda olib tashlangan rasmlar fayli bilan o‘chadi; hech qachon saqlanmagan rasmlar 7 kundan keyin `fikrlash:prune` bilan tozalanadi.
 - `posts.content` — sarlavha va bloklardan yig‘ilgan oddiy matn: qidiruv, AI tahlili, `#teg` va `@eslatma` maqolada ham ishlaydi. Lentada maqola muqova (birinchi rasm), sarlavha, qisqa mazmun va o‘qish vaqti bilan ko‘rinadi. API: `type`, `title`, `blocks`, `read_minutes`.
 
+### Shaxsiy xabarlar (chat)
+
+Ikki kishi o‘rtasida suhbat: `/messages` (ro‘yxat), `/messages/{id}` (suhbat), profilda “Xabar” tugmasi.
+- **Matn** (havolalar, @eslatma, **qalin**/*kursiv*), **javob berish** (iqtibos bilan), **tahrirlash** (“tahrirlangan” belgisi; ↑ — oxirgisini tahrirlash), **o‘chirish** (“Xabar o‘chirildi” qoladi, matn/fayl yo‘q qilinadi).
+- **Ovozli xabar:** mikrofon tugmasi → yozish (vaqt va jonli to‘lqin), bekor qilish yoki yuborish (5 daqiqagacha). Brauzer MediaRecorder bilan yozadi (avval MP4/AAC, bo‘lmasa WebM/Opus); fayl turi serverda ichki imzosi bo‘yicha tekshiriladi. Fayllar `storage/app/private/chat/voice` da, faqat ishtirokchilarga himoyalangan manzil orqali beriladi (aylantirib eshitish ishlaydi). Mikrofon HTTPS yoki `localhost` da ishlaydi.
+- **Reaksiyalar:** ❤️ 👍 😂 😮 😢 🔥 🙏 — bosib turish / o‘ng tugma / ikki marta bosish (❤️). Har kim bitta xabarga bitta reaksiya; qayta bosilsa olib tashlanadi.
+- **Real vaqt:** WebSocket server kerak emas — suhbat ochiq turganda har ~3 soniyada qisqa so‘rov (`/messages/{id}/poll`): yangi va o‘zgargan xabarlar, “yozmoqda…”, onlayn holat, ✓/✓✓ (o‘qildi). Menyudagi o‘qilmaganlar soni — `/badges`.
+- **Xavfsizlik:** sozlamalarda “Kim menga yoza oladi” (hamma / faqat men obuna bo‘lganlar / hech kim), suhbatni bloklash, shikoyat, “Suhbatni tozalash” (faqat o‘zingiz uchun). Kuniga yangi suhbatlar va daqiqasiga xabarlar soni cheklangan. Admin ham yozishmalarni ko‘rmaydi.
+- Sozlamalar: `config/fikrlash.php → chat` (`CHAT_VOICE_DISK`, tahrir muddati, reaksiyalar ro‘yxati, poll oralig‘i).
+
 ### Qidiruv
 
 Qidiruv real vaqtda ishlaydi: foydalanuvchi yozishni to‘xtatgach (250 ms) natijalar orqa fonda yangilanadi, sahifa qayta yuklanmaydi va URL o‘zgaradi (`/search/live`). Sarlavhadagi qidiruv maydoni yozish bilan odamlar, teglar va fikrlar bo‘yicha tezkor takliflarni ko‘rsatadi (`/search/suggest`, ↑/↓ bilan tanlash, Esc — yopish, Enter — to‘liq natijalar). Eski so‘rovlar bekor qilinadi (AbortController), limit — daqiqasiga 150 so‘rov.
 
-**MVP (tayyor):** autentifikatsiya + SMS OTP (2 bosqichli ro‘yxatdan o‘tish), profil, postlar va maqolalar (matn orasida rasmlar, bo‘limlar; mavzuni AI aniqlaydi, teglarni muallif qo‘yadi), izoh va javoblar, like, saqlash, obuna, o‘rganuvchi shaxsiy lenta, qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, xatti-harakatdan o‘rganadigan tavsiyalar ("Qiziq emas", kashfiyot), o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
+**MVP (tayyor):** autentifikatsiya + SMS OTP (2 bosqichli ro‘yxatdan o‘tish), profil, postlar va maqolalar (matn orasida rasmlar, bo‘limlar; mavzuni AI aniqlaydi, teglarni muallif qo‘yadi), izoh va javoblar, like, saqlash, obuna, shaxsiy xabarlar (matn, ovozli xabar, tahrir, reaksiyalar), o‘rganuvchi shaxsiy lenta, qidiruv, bildirishnomalar va mention'lar, shikoyatlar, admin panel, audit log, REST API + tokenlar, AI tahlil va moderatsiya signali, xatti-harakatdan o‘rganadigan tavsiyalar ("Qiziq emas", kashfiyot), o‘qish vaqti, trend teglar, SEO (meta, OpenGraph, JSON-LD, sitemap), dark mode.
 
 **V2:** real-time bildirishnomalar (Laravel Reverb), Horizon, Meilisearch (Laravel Scout), kirill ↔ lotin qidiruv, haftalik dayjest, foydalanuvchini bloklash/mute, admin 2FA, rasmlar uchun CDN va bir nechta o‘lcham.
 

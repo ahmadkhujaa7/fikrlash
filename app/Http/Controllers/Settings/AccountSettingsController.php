@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\MessagePrivacy;
 use App\Http\Controllers\Controller;
 use App\Services\Account\AccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -17,6 +19,15 @@ class AccountSettingsController extends Controller
     public function edit(): View
     {
         return view('settings.account', ['graceDays' => config('fikrlash.accounts.deletion_grace_days')]);
+    }
+
+    /** Kim menga shaxsiy xabar yoza oladi. */
+    public function updateMessaging(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['messages_from' => ['required', Rule::enum(MessagePrivacy::class)]]);
+        $request->user()->forceFill(['messages_from' => $data['messages_from']])->save();
+
+        return back()->with('toast', 'Xabarlar sozlamasi saqlandi.');
     }
 
     public function deactivate(Request $request): RedirectResponse
