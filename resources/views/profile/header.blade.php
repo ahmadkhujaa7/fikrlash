@@ -10,6 +10,20 @@
             <x-avatar :user="$user" size="xl" class="relative z-10 !size-24 ring-[5px] ring-paper sm:!size-28 sm:!text-5xl" />
             <div class="flex gap-2 pb-1">
                 @if ($isOwner)
+                    {{-- O‘z profilim: akkaunt menyusi (mobilda yuqori paneldagi avatar menyusi o‘rniga) --}}
+                    <x-dropdown label="Akkaunt menyusi">
+                        <x-slot:trigger class="border border-line-strong !p-2"><x-ico name="dots" /></x-slot:trigger>
+                        <x-dropdown-item icon="bookmark" :href="route('saved.index')">Saqlanganlar</x-dropdown-item>
+                        <x-dropdown-item icon="document" :href="route('posts.drafts')">Qoralamalar</x-dropdown-item>
+                        <x-dropdown-item icon="settings" :href="route('settings.profile')">Sozlamalar</x-dropdown-item>
+                        @if (auth()->user()->isAdmin())
+                            <x-dropdown-item icon="shield" href="/admin">Admin panel</x-dropdown-item>
+                        @endif
+                        <form method="POST" action="{{ route('logout') }}" class="border-t border-line pt-1">
+                            @csrf
+                            <x-dropdown-item icon="logout" type="submit">Chiqish</x-dropdown-item>
+                        </form>
+                    </x-dropdown>
                     <a href="{{ route('settings.profile') }}" class="btn btn-secondary">Profilni tahrirlash</a>
                 @else
                     @auth

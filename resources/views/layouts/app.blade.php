@@ -53,16 +53,19 @@
         <div class="{{ request()->routeIs('search') ? 'ml-auto' : 'ml-auto md:ml-0' }} flex items-center gap-1.5">
             @auth
                 <a href="{{ route('posts.create') }}" class="btn btn-primary btn-sm mr-1 hidden md:inline-flex xl:hidden"><x-ico name="pencil" size="size-4" /> Yozish</a>
-                {{-- Xabarlar: mobilda va planshetda sarlavhada (kompyuterda — chap menyuda) --}}
-                <a href="{{ route('messages.index') }}" class="icon-btn relative xl:hidden" aria-label="Xabarlar" x-data="unreadBadge('messages')">
+                {{-- Bildirishnomalar: mobil va planshetda sarlavhada (kompyuterda — chap menyuda) --}}
+                <a href="{{ route('notifications.index') }}" class="icon-btn relative xl:hidden {{ request()->routeIs('notifications.*') ? '!text-lapis' : '' }}" aria-label="Bildirishnomalar"
+                   x-data="unreadBadge('notifications')">
+                    <x-ico name="bell" :solid="request()->routeIs('notifications.*')" />
+                    <span x-show="count > 0" x-cloak class="absolute right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-anor px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-paper" x-text="count > 99 ? '99+' : count"></span>
+                </a>
+                {{-- Xabarlar: planshetda sarlavhada (mobilda — pastki menyuda, kompyuterda — chap menyuda) --}}
+                <a href="{{ route('messages.index') }}" class="icon-btn relative hidden md:grid xl:hidden" aria-label="Xabarlar" x-data="unreadBadge('messages')">
                     <x-ico name="chat" />
                     <span x-show="count > 0" x-cloak class="absolute right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-lapis px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-paper" x-text="count > 99 ? '99+' : count"></span>
                 </a>
-                <a href="{{ route('notifications.index') }}" class="relative hidden rounded-full p-2 text-muted hover:text-ink md:block xl:hidden" aria-label="Bildirishnomalar"
-                   x-data="unreadBadge('notifications')">
-                    <x-ico name="bell" />
-                    <span x-show="count > 0" x-cloak class="absolute right-1.5 top-1.5 size-2 rounded-full bg-anor ring-2 ring-paper"></span>
-                </a>
+                {{-- Akkaunt menyusi: mobilda yo‘q (profil — pastki menyuda, qolgan bo‘limlar — profil sahifasidagi menyuda) --}}
+                <div class="hidden md:block">
                 <x-dropdown label="Akkaunt menyusi">
                     <x-slot:trigger class="!p-1"><x-avatar :user="$me" size="xs" /></x-slot:trigger>
                     <div class="border-b border-line px-4 pb-3 pt-2">
@@ -83,6 +86,7 @@
                         <x-dropdown-item icon="logout" type="submit">Chiqish</x-dropdown-item>
                     </form>
                 </x-dropdown>
+                </div>
             @else
                 <a href="{{ route('login') }}" class="btn btn-ghost btn-sm">Kirish</a>
                 <a href="{{ route('register') }}" class="btn btn-primary btn-sm">Ro‘yxatdan o‘tish</a>
@@ -130,19 +134,19 @@
             <span class="tab-compose"><x-ico name="plus" size="size-6" stroke-width="2.2" /></span>
         </a>
         @auth
-            <a href="{{ route('notifications.index') }}" data-tab class="tab-item" @if (request()->routeIs('notifications.*')) aria-current="page" @endif x-data="unreadBadge('notifications')">
+            <a href="{{ route('messages.index') }}" data-tab class="tab-item" @if (request()->routeIs('messages.*')) aria-current="page" @endif x-data="unreadBadge('messages')">
                 <span class="relative">
-                    <x-ico name="bell" size="size-6" :solid="request()->routeIs('notifications.*')" />
-                    <span x-show="count > 0" x-cloak class="absolute -right-1 -top-1 grid min-w-[17px] place-items-center rounded-full bg-anor px-1 text-[10px] font-semibold leading-[17px] text-white ring-2 ring-paper" x-text="count > 99 ? '99+' : count"></span>
+                    <x-ico name="chat" size="size-6" :solid="request()->routeIs('messages.*')" />
+                    <span x-show="count > 0" x-cloak class="absolute -right-1.5 -top-1 grid min-w-[17px] place-items-center rounded-full bg-lapis px-1 text-[10px] font-semibold leading-[17px] text-white ring-2 ring-paper" x-text="count > 99 ? '99+' : count"></span>
                 </span>
-                Faollik
+                Xabarlar
             </a>
             <a href="{{ route('profile.show', $me->username) }}" data-tab class="tab-item" @if (request()->is('@'.$me->username, '@'.$me->username.'/*')) aria-current="page" @endif>
                 <span class="rounded-full ring-2 {{ request()->is('@'.$me->username, '@'.$me->username.'/*') ? 'ring-lapis' : 'ring-transparent' }}"><x-avatar :user="$me" size="xs" /></span>
                 Profil
             </a>
         @else
-            <a href="{{ route('login') }}" data-tab class="tab-item"><x-ico name="bell" size="size-6" />Faollik</a>
+            <a href="{{ route('login') }}" data-tab class="tab-item"><x-ico name="chat" size="size-6" />Xabarlar</a>
             <a href="{{ route('login') }}" data-tab class="tab-item"><x-ico name="user" size="size-6" />Kirish</a>
         @endauth
     </div>
