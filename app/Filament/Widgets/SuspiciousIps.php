@@ -30,6 +30,8 @@ class SuspiciousIps extends TableWidget
                 ->groupBy('ip')
                 ->having(DB::raw('COUNT(*)'), '>=', 5))
             ->defaultSort('attempts', 'desc')
+            // Guruhlangan so‘rov: MySQL (ONLY_FULL_GROUP_BY) id bo‘yicha qo‘shimcha tartibni qabul qilmaydi.
+            ->defaultKeySort(false)
             ->columns([
                 TextColumn::make('ip')->label('IP')->fontFamily('mono')->copyable(),
                 TextColumn::make('attempts')->label('Urinishlar')->sortable()->color('danger')->weight('bold'),

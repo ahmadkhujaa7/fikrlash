@@ -44,10 +44,16 @@ class SearchService
 
         if (DB::getDriverName() === 'mysql' && $terms !== []) {
             $boolean = implode(' ', array_map(fn ($t) => '+'.$t.'*', $terms));
-            $builder->whereFullText('posts.search_text', $boolean, ['mode' => 'boolean']);
-        } else {
-            $builder->where('posts.search_text', 'like', '%'.$this->escapeLike($normalized).'%');
+            $fulltext = (clone $builder)->whereFullText('posts.search_text', $boolean, ['mode' => 'boolean']);
+
+            // FULLTEXT hech narsa topmasa (to‘xtash so‘zlari, juda qisqa so‘z, hali indekslanmagan
+            // yangi yozuv) — oddiy LIKE qidiruvi bilan yana bir bor urinamiz.
+            if ((clone $fulltext)->exists()) {
+                return $fulltext->orderByDesc('posts.score')->orderByDesc('posts.id');
+            }
         }
+
+        $builder->where('posts.search_text', 'like', '%'.$this->escapeLike($normalized).'%');
 
         return $builder->orderByDesc('posts.score')->orderByDesc('posts.id');
     }
