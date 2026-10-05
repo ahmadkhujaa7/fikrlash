@@ -62,7 +62,11 @@ jobs:
           DB_DATABASE: ${{ matrix.db == 'mysql' && 'fikrlash_test' || ':memory:' }}
           DB_USERNAME: root
           DB_PASSWORD: secret
-        run: php artisan test
+        run: php artisan test --log-junit junit.xml
+
+      - name: Failed tests as annotations
+        if: failure()
+        run: php .github/scripts/junit-annotations.php junit.xml
 
       - name: Migrations + seed on MySQL
         if: matrix.db == 'mysql'
