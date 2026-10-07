@@ -7,6 +7,7 @@ import { captureFeed, rememberFeedChunk, restoreFeedPosition } from './navigatio
 import { registerBadges, registerInbox, registerThread } from './chat';
 import { registerUi } from './ui';
 import { registerDevice } from './device';
+import { initNative } from './native';
 
 window.Alpine = Alpine;
 Alpine.plugin(intersect);
@@ -1527,6 +1528,7 @@ registerInbox(Alpine);
 registerThread(Alpine);
 registerUi(Alpine);
 registerDevice(Alpine);
+initNative(); // mobil ilova ichida: push, havolalar, "Orqaga" tugmasi (brauzerda — hech narsa)
 
 Alpine.data('readTimer', readTimer);
 

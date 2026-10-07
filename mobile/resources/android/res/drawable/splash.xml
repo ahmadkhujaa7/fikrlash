@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Eski Android (12 dan oldin) splash: fon rangi + markazda ikonka (cho‘zilmaydi). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/fk_splash_bg" />
+    <item android:width="120dp" android:height="120dp" android:gravity="center" android:drawable="@drawable/splash_icon" />
+</layer-list>

@@ -32,6 +32,9 @@ const store = {
 
 const supported = () => 'Notification' in window;
 const permission = () => (supported() ? Notification.permission : 'unsupported');
+// Mobil ilova ichida (native.js) — brauzer bildirishnomalari o‘rniga ilovaning o‘z push'i.
+const inApp = () => Boolean(window.fkNative);
+const nativeState = (s) => (s === 'prompt-with-rationale' ? 'prompt' : s);
 
 let swRegistration = null;
 async function registration() {
@@ -63,7 +66,7 @@ async function showSystemNotification(title, { body = '', url = '/', tag, icon }
 
 export const push = {
     enabled() {
-        return store.get(PUSH_KEY) === '1' && permission() === 'granted';
+        return !inApp() && store.get(PUSH_KEY) === '1' && permission() === 'granted';
     },
     /** Ruxsat so‘raydi va yoqadi. Natija: true — yoqildi. */
     async enable() {
@@ -122,6 +125,7 @@ export const push = {
 /** Ruxsat holati: granted | denied | prompt | unsupported | unknown. */
 async function permissionState(name) {
     if (name === 'notifications') {
+        if (inApp()) return nativeState(await window.fkNative.pushPermission());
         const p = permission();
         return p === 'default' ? 'prompt' : p;
     }
@@ -141,7 +145,8 @@ async function requestPermission(name) {
         return;
     }
     if (name === 'notifications') {
-        await push.enable();
+        if (inApp()) await window.fkNative.requestPush();
+        else await push.enable();
         return;
     }
     if (name === 'geolocation') {
@@ -174,12 +179,30 @@ export function registerDevice(Alpine) {
 
     /* Sozlamalar → Bildirishnomalar: shu qurilmada ko‘rsatish */
     Alpine.data('devicePush', () => ({
+        app: inApp(),
         state: permission(),
         on: push.enabled(),
         secure: window.isSecureContext,
         busy: false,
+        async init() {
+            if (!this.app) return;
+            this.state = nativeState(await window.fkNative.pushPermission());
+            this.on = this.state === 'granted';
+        },
         async toggle() {
             if (this.busy) return;
+            if (this.app) {
+                if (this.on) {
+                    toast('O‘chirish uchun: telefon Sozlamalari → Ilovalar → Fikrlash → Bildirishnomalar.');
+                    return;
+                }
+                this.busy = true;
+                this.state = nativeState(await window.fkNative.requestPush());
+                this.on = this.state === 'granted';
+                if (this.state === 'denied') toast('Ruxsat berilmagan. Telefon Sozlamalari → Ilovalar → Fikrlash → Bildirishnomalar bo‘limidan yoqing.', 'error');
+                this.busy = false;
+                return;
+            }
             this.busy = true;
             if (this.on) {
                 push.disable();
@@ -197,7 +220,8 @@ export function registerDevice(Alpine) {
 
     /* Bildirishnomalar sahifasidagi taklif */
     Alpine.data('pushOffer', () => ({
-        visible: supported() && window.isSecureContext && permission() === 'default' && store.get(OFFER_KEY) !== '1' && store.get(PUSH_KEY) !== '0',
+        // Ilovada push ilova ochilganda so‘raladi — bu taklif faqat brauzerda.
+        visible: !inApp() && supported() && window.isSecureContext && permission() === 'default' && store.get(OFFER_KEY) !== '1' && store.get(PUSH_KEY) !== '0',
         async enable() {
             this.visible = false;
             if (await push.enable()) toast('Bildirishnomalar yoqildi.', 'success');

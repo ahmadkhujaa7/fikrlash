@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1;
+use App\Http\Controllers\DeviceController;
 use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -81,6 +82,10 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
         Route::get('notifications/unread-count', [V1\NotificationController::class, 'unreadCount'])->name('notifications.unread');
         Route::post('notifications/read-all', [V1\NotificationController::class, 'markAllRead']);
         Route::post('notifications/{notification}/read', [V1\NotificationController::class, 'markRead'])->whereNumber('notification');
+
+        // Mobil ilova push tokenlari (Firebase Cloud Messaging).
+        Route::post('devices', [DeviceController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('devices', [DeviceController::class, 'destroy']);
 
         Route::post('reports', [V1\ReportController::class, 'store'])->middleware('throttle:reports')->name('reports.store');
     });

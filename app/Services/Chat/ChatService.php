@@ -10,6 +10,8 @@ use App\Models\Message;
 use App\Models\MessageReaction;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\Push\PushMessage;
+use App\Services\Push\PushService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +29,7 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class ChatService
 {
-    public function __construct(private VoiceStore $voices, private ChatMediaStore $media) {}
+    public function __construct(private VoiceStore $voices, private ChatMediaStore $media, private PushService $push) {}
 
     /** Ikki kishi o‘rtasidagi suhbat (bo‘lmasa yaratiladi). */
     public function between(User $me, User $other): Conversation
@@ -182,6 +184,15 @@ class ChatService
 
         Cache::forget($this->typingKey($conversation->id, $sender->id));
         $this->forgetUnread($recipient->id);
+
+        // Telefonga: "Aziz — Salom!" (bitta suhbatdagi xabarlar bitta bildirishnomaga yig‘iladi).
+        $this->push->toUsers($recipient->id, new PushMessage(
+            title: $sender->name,
+            body: $message->snippet(140),
+            url: route('messages.show', $conversation),
+            channel: PushMessage::CHANNEL_MESSAGES,
+            tag: 'chat-'.$conversation->id,
+        ));
 
         return $message;
     }

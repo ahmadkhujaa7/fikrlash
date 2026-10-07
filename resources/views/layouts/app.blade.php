@@ -13,7 +13,7 @@
     ];
 @endphp
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" @class(['in-app' => \App\Support\AppClient::isApp()])>
 <head>
     @include('layouts.head')
 </head>

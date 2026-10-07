@@ -224,6 +224,11 @@ export function registerUi(Alpine) {
 
     /* ---------- Ulashish ---------- */
     window.sharePost = (url, text = '', id = null) => {
+        // Ilovada mehmon (yoki post emas, profil) — telefonning o‘z "Ulashish" menyusi.
+        if (window.fkNative && (!id || !document.body.dataset.auth)) {
+            window.fkNative.share({ url, text: text || undefined }).catch(() => {});
+            return;
+        }
         if (document.querySelector('[data-share-sheet]')) {
             window.dispatchEvent(new CustomEvent('share-post', { detail: { url, text, id } }));
             return;
@@ -248,7 +253,7 @@ export function registerUi(Alpine) {
             loading: false,
             sending: false,
             auth: Boolean(document.body.dataset.auth),
-            canNative: typeof navigator.share === 'function',
+            canNative: Boolean(window.fkNative) || typeof navigator.share === 'function',
             show(post) {
                 Object.assign(this, { post, q: '', selected: [], body: '', users: [], open: true });
                 document.documentElement.classList.add('overlay-lock');
@@ -312,7 +317,8 @@ export function registerUi(Alpine) {
             },
             async native() {
                 try {
-                    await navigator.share({ url: this.post.url, text: this.post.text || undefined });
+                    if (window.fkNative) await window.fkNative.share({ url: this.post.url, text: this.post.text || undefined });
+                    else await navigator.share({ url: this.post.url, text: this.post.text || undefined });
                     this.close();
                 } catch {
                     /* bekor qilindi */

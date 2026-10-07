@@ -8,7 +8,10 @@ use App\Models\Announcement;
 use App\Models\AnnouncementReceipt;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\Push\PushMessage;
+use App\Services\Push\PushService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Admin e'lonlari: yuborish (har bir qabul qiluvchiga bildirishnoma qatori) va statistika:
@@ -17,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  */
 class AnnouncementService
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(private NotificationService $notifications, private PushService $push) {}
 
     /**
      * Faol foydalanuvchilarga (yoki tanlanganlarga) yuboradi. Katta auditoriya — bo‘laklab, bulk insert.
@@ -28,12 +31,19 @@ class AnnouncementService
     {
         $now = now();
         $count = 0;
+        $pushMessage = new PushMessage(
+            title: $announcement->title,
+            body: Str::limit(preg_replace('/\s+/u', ' ', $announcement->body) ?? '', 140),
+            url: route('notifications.index'),
+            tag: 'announcement-'.$announcement->id,
+            image: $announcement->imageUrl(),
+        );
 
         User::query()
             ->where('status', UserStatus::Active)
             ->when($announcement->audience === Announcement::AUDIENCE_USERS, fn ($q) => $q->whereKey($userIds ?? []))
             ->select('id')
-            ->chunkById(1000, function ($users) use ($announcement, $now, &$count) {
+            ->chunkById(1000, function ($users) use ($announcement, $now, &$count, $pushMessage) {
                 Notification::query()->insert($users->map(fn (User $u) => [
                     'user_id' => $u->id,
                     'type' => NotificationType::Announcement->value,
@@ -43,6 +53,7 @@ class AnnouncementService
                     'updated_at' => $now,
                 ])->all());
                 $this->notifications->forgetUnreadCounts($users->pluck('id')->all());
+                $this->push->toUsers($users->pluck('id')->all(), $pushMessage);
                 $count += $users->count();
             });
 

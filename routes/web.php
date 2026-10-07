@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AppLinksController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\ComposeController;
+use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\ManifestController;
@@ -22,6 +24,11 @@ use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [FeedController::class, 'index'])->name('home');
+
+// Mobil ilova: havolalar ilovada ochilishi uchun (Android App Links, iOS Universal Links).
+Route::get('/.well-known/assetlinks.json', [AppLinksController::class, 'android'])->name('app-links.android');
+Route::get('/.well-known/apple-app-site-association', [AppLinksController::class, 'apple'])->name('app-links.apple');
+Route::get('/apple-app-site-association', [AppLinksController::class, 'apple']);
 Route::get('/feed', [FeedController::class, 'page'])->name('feed.page');
 
 // ---- Autentifikatsiya ----
@@ -113,6 +120,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/devices', [DeviceController::class, 'store'])->middleware('throttle:20,1')->name('devices.store');
+    Route::delete('/devices', [DeviceController::class, 'destroy'])->name('devices.destroy');
     Route::post('/announcements/{announcement}/open', [AnnouncementController::class, 'open'])->whereNumber('announcement')->name('announcements.open');
 
     Route::prefix('settings')->name('settings.')->group(function () {

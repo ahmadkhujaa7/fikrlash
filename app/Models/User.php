@@ -135,6 +135,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->morphMany(AuditLog::class, 'target');
     }
 
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);

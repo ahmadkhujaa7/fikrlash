@@ -1,0 +1,36 @@
+{
+  "appId": "uz.fikrlash.app",
+  "appName": "Fikrlash",
+  "webDir": "www",
+  "backgroundColor": "#ffffff",
+  "server": {
+    "url": "https://fikrlash.uz",
+    "cleartext": false,
+    "errorPath": "offline.html",
+    "allowNavigation": ["fikrlash.uz", "www.fikrlash.uz"]
+  },
+  "android": {
+    "appendUserAgent": "FikrlashApp/1.0.0 (android)",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "appendUserAgent": "FikrlashApp/1.0.0 (ios)"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 4000,
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 200,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "SystemBars": {
+      "insetsHandling": "disable",
+      "style": "DEFAULT"
+    }
+  }
+}

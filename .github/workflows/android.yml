@@ -1,0 +1,91 @@
+# Android ilova: har push'da yig‘iladi (mobile/ papkasi o‘zgarsa).
+# Natija:
+#  - "Releases" → "Android (sinov)" — telefonda yuklab olib o‘rnatiladigan fikrlash.apk;
+#  - Actions → shu ishga biriktirilgan fayllar (APK va Google Play uchun AAB).
+# Imzolash: GitHub → Settings → Secrets and variables → Actions → ANDROID_KEYSTORE_PASSWORD.
+# Bo‘lmasa — doimiy test kaliti bilan imzolanadi (telefonga o‘rnatish uchun yetarli, Play uchun emas).
+name: Android
+
+on:
+  push:
+    branches: [mobile, main]
+    paths: ['mobile/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Capacitor o‘rnatish va Android loyiha yaratish
+        run: |
+          npm install --no-audit --no-fund 2>&1 | tee install.log
+          npx cap add android 2>&1 | tee -a install.log
+
+      - name: Fikrlash sozlamalari (ikonka, ruxsatlar, havolalar, imzo)
+        env:
+          FK_VERSION_CODE: ${{ github.run_number }}
+        run: node scripts/prepare-android.mjs
+
+      - name: Sinxronlash
+        run: npx cap sync android 2>&1 | tee -a install.log
+
+      - name: Yig‘ish (APK + AAB)
+        env:
+          FK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$FK_KEYSTORE_PASSWORD" ]; then export FK_KEYSTORE="$PWD/signing/upload.p12"; echo "Imzo: yuklash kaliti"; else echo "Imzo: test kaliti"; fi
+          cd android
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleRelease bundleRelease 2>&1 | tee ../build.log
+
+      - name: Xatolarni izoh sifatida ko‘rsatish
+        if: failure()
+        run: |
+          if [ -f build.log ]; then node scripts/annotate-log.mjs build.log; else node scripts/annotate-log.mjs install.log; fi
+
+      - name: Fayllarni tayyorlash
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/fikrlash.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab dist/fikrlash.aab
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fikrlash-android-${{ github.run_number }}
+          path: mobile/dist/
+
+      - name: "Releases: Android (sinov)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Fikrlash Android ilovasi — sinov versiyasi #${{ github.run_number }} (${GITHUB_SHA::7}). Telefonda fikrlash.apk ni yuklab oling va o‘rnating."
+          if gh release view android-latest >/dev/null 2>&1; then
+            gh release edit android-latest --notes "$NOTES" --prerelease
+          else
+            gh release create android-latest --title "Android (sinov)" --notes "$NOTES" --prerelease --target "$GITHUB_SHA"
+          fi
+          gh release upload android-latest dist/fikrlash.apk --clobber

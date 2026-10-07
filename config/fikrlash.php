@@ -102,6 +102,28 @@ return [
         'daily_new_conversations' => 40, // spamga qarshi: kuniga nechta yangi odamga yozish mumkin
     ],
 
+    // Mobil ilovaga push bildirishnomalar (Firebase Cloud Messaging, HTTP v1).
+    // FCM_CREDENTIALS — Firebase konsoli → Project settings → Service accounts → "Generate new private key"
+    // bilan olingan JSON faylning yo‘li (yoki JSON matnning o‘zi). Bo‘sh bo‘lsa — push o‘chiq.
+    'push' => [
+        'credentials' => env('FCM_CREDENTIALS', storage_path('app/private/firebase-service-account.json')),
+        // after_response — alohida worker shart emas; queue — "php artisan queue:work" ishlayotgan serverda.
+        'dispatch' => env('PUSH_DISPATCH', 'after_response'),
+    ],
+
+    // Mobil ilova: havolalar (fikrlash.uz/...) brauzerda emas, ilovada ochilishi uchun.
+    'mobile' => [
+        'android_package' => env('MOBILE_ANDROID_PACKAGE', 'uz.fikrlash.app'),
+        // Ilovani imzolagan sertifikatlarning SHA-256 izlari (vergul bilan). Google Play'ga yuklangach,
+        // Play Console → Setup → App signing dagi "App signing key" izini ham qo‘shing.
+        'android_sha256' => array_values(array_filter(array_map('trim', explode(',', (string) env('MOBILE_ANDROID_SHA256', implode(',', [
+            'A5:9B:F6:DD:FC:C4:FB:2C:F4:C4:D1:36:38:5E:2E:CB:EA:A4:2D:92:F3:5C:E6:F5:8A:49:F6:D0:21:30:6D:F6', // yuklash kaliti (mobile/signing/upload.p12)
+            '19:CB:CB:81:FB:13:48:43:D0:01:5F:98:C7:0B:AC:E5:BC:18:B2:6A:47:03:B3:37:0B:4D:37:8C:7B:7D:BE:16', // test kaliti (mobile/signing/debug.keystore)
+        ])))))),
+        'ios_app_id' => env('MOBILE_IOS_APP_ID'), // TEAMID.uz.fikrlash.app (Apple akkaunti ochilgach)
+        'play_store_url' => env('MOBILE_PLAY_STORE_URL'),
+    ],
+
     'feed' => [
         'per_page' => 20,
         'candidate_days' => 14,

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fikrlash ranglari: tizim panellari orqasi va splash fon (saytning theme-color bilan bir xil). -->
+    <color name="fk_brand">#3049D1</color>
+    <color name="fk_bars">#FFFFFF</color>
+    <color name="fk_splash_bg">#FFFFFF</color>
+</resources>
