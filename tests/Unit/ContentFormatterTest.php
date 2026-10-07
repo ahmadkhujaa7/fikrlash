@@ -54,4 +54,23 @@ class ContentFormatterTest extends TestCase
 
         $this->assertSame(['ai' => 'AI', 'biznes' => 'biznes'], $tags);
     }
+
+    public function test_bare_domains_become_links(): void
+    {
+        $html = ContentFormatter::toHtml('Saytimiz fikrlash.uz, batafsil www.kun.uz/news/1 da.');
+
+        $this->assertStringContainsString('<a href="https://fikrlash.uz" class="link"', $html);
+        $this->assertStringContainsString('>fikrlash.uz</a>,', $html); // vergul havoladan tashqarida
+        $this->assertStringContainsString('<a href="https://www.kun.uz/news/1" class="link"', $html);
+        $this->assertStringContainsString('>kun.uz/news/1</a> da.', $html);
+    }
+
+    public function test_things_that_only_look_like_domains_stay_text(): void
+    {
+        foreach (['info@fikrlash.uz', 'Node.js va v2.0', 'fayl.txt', 'a.b'] as $text) {
+            $this->assertStringNotContainsString('<a ', ContentFormatter::toHtml($text), $text);
+        }
+        // Domen ichida HTML/qo‘shtirnoq atributni buzolmaydi.
+        $this->assertStringNotContainsString('"onclick', ContentFormatter::toHtml('sayt.uz/"onclick="x'));
+    }
 }

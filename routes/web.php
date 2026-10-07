@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -91,6 +92,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('messages')->name('messages.')->controller(MessageController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/with/{user}', 'with')->name('with');
+        Route::get('/recipients', 'recipients')->middleware('throttle:search-live')->name('recipients');
+        Route::post('/share', 'share')->middleware('throttle:chat-send')->name('share');
         Route::get('/{conversation}', 'show')->whereNumber('conversation')->name('show');
         Route::get('/{conversation}/poll', 'poll')->whereNumber('conversation')->middleware('throttle:chat-poll')->name('poll');
         Route::get('/{conversation}/history', 'history')->whereNumber('conversation')->name('history');
@@ -105,10 +108,12 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{conversation}/{message}', 'destroy')->name('destroy');
             Route::post('/{conversation}/{message}/react', 'react')->middleware('throttle:chat-send')->name('react');
             Route::get('/{conversation}/{message}/voice', 'voice')->name('voice');
+            Route::get('/{conversation}/{message}/media/{attachment}', 'media')->whereNumber('attachment')->name('media');
         });
     });
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/announcements/{announcement}/open', [AnnouncementController::class, 'open'])->whereNumber('announcement')->name('announcements.open');
 
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/', [Settings\ProfileSettingsController::class, 'edit'])->name('profile');
@@ -120,6 +125,10 @@ Route::middleware('auth')->group(function () {
         Route::put('/password', [Settings\SecuritySettingsController::class, 'updatePassword'])->middleware('not-impersonating')->name('password');
         Route::post('/phone', [Settings\SecuritySettingsController::class, 'requestPhoneChange'])->middleware('throttle:otp-send')->middleware('not-impersonating')->name('phone');
         Route::post('/phone/verify', [Settings\SecuritySettingsController::class, 'verifyPhoneChange'])->middleware('throttle:otp-verify')->middleware('not-impersonating')->name('phone.verify');
+
+        Route::get('/notifications', [Settings\NotificationSettingsController::class, 'edit'])->name('notifications');
+        Route::put('/notifications', [Settings\NotificationSettingsController::class, 'update'])->name('notifications.update');
+        Route::get('/permissions', [Settings\NotificationSettingsController::class, 'permissions'])->name('permissions');
 
         Route::get('/account', [Settings\AccountSettingsController::class, 'edit'])->name('account');
         Route::put('/messaging', [Settings\AccountSettingsController::class, 'updateMessaging'])->name('messaging');

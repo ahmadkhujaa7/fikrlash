@@ -33,9 +33,11 @@ class AdminPanelTest extends TestCase
         $admin = $this->admin();
 
         foreach (['/admin', '/admin/users', '/admin/posts', '/admin/comments', '/admin/reports', '/admin/categories',
-            '/admin/tags', '/admin/audit-logs', '/admin/api-tokens', '/admin/ai-analytics', '/admin/system-settings', '/admin/broadcast-notification'] as $url) {
+            '/admin/tags', '/admin/audit-logs', '/admin/api-tokens', '/admin/ai-analytics', '/admin/system-settings', '/admin/announcements', '/admin/announcements/create'] as $url) {
             $this->actingAs($admin)->get($url)->assertOk();
         }
+        // Eski "Bildirishnoma yuborish" sahifasi — E'lonlarga yo‘naltiradi.
+        $this->actingAs($admin)->get('/admin/broadcast-notification')->assertRedirect('/admin/announcements/create');
     }
 
     public function test_moderation_actions_are_audited(): void

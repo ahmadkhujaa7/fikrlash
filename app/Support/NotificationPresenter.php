@@ -3,10 +3,12 @@
 namespace App\Support;
 
 use App\Enums\NotificationType;
+use App\Models\Announcement;
 use App\Models\Comment;
 use App\Models\Notification;
 use App\Models\Post;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 /** Bildirishnomani o‘qiladigan matn va havolaga aylantiradi (web va API uchun bir xil). */
 final class NotificationPresenter
@@ -36,9 +38,14 @@ final class NotificationPresenter
                 default => 'Postingiz holati o‘zgardi.',
             },
             NotificationType::System => (string) ($data['message'] ?? 'Tizim xabari'),
+            NotificationType::Announcement => $subject instanceof Announcement ? $subject->title : 'E’lon',
         };
 
-        $excerpt = $data['excerpt'] ?? ($subject instanceof Post ? $subject->excerpt(120) : null);
+        $excerpt = $data['excerpt'] ?? match (true) {
+            $subject instanceof Post => $subject->excerpt(120),
+            $subject instanceof Announcement => Str::limit(preg_replace('/\s+/u', ' ', $subject->body) ?? '', 140),
+            default => null,
+        };
 
         return ['text' => $text, 'url' => $url, 'excerpt' => $excerpt];
     }

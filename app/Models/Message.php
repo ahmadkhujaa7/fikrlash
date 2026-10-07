@@ -22,9 +22,15 @@ class Message extends Model
 
     public const TYPE_VOICE = 'voice';
 
+    public const TYPE_MEDIA = 'media';
+
+    public const TYPE_LOCATION = 'location';
+
+    public const TYPE_POST = 'post';
+
     protected $fillable = [
-        'conversation_id', 'user_id', 'reply_to_id', 'type', 'body',
-        'voice_path', 'voice_mime', 'voice_duration', 'voice_waveform',
+        'conversation_id', 'user_id', 'reply_to_id', 'post_id', 'type', 'body',
+        'voice_path', 'voice_mime', 'voice_duration', 'voice_waveform', 'meta',
     ];
 
     protected $attributes = ['type' => 'text'];
@@ -33,6 +39,7 @@ class Message extends Model
     {
         return [
             'voice_waveform' => 'array',
+            'meta' => 'array',
             'voice_duration' => 'integer',
             'edited_at' => 'datetime',
             'removed_at' => 'datetime',
@@ -52,6 +59,16 @@ class Message extends Model
     public function replyTo(): BelongsTo
     {
         return $this->belongsTo(self::class, 'reply_to_id');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(MessageAttachment::class)->orderBy('position');
+    }
+
+    public function post(): BelongsTo
+    {
+        return $this->belongsTo(Post::class)->withTrashed();
     }
 
     public function reactions(): HasMany
@@ -83,8 +100,33 @@ class Message extends Model
         if ($this->isVoice()) {
             return 'Ovozli xabar · '.self::duration((int) $this->voice_duration);
         }
+        $caption = trim((string) $this->body);
+        $prefix = match ($this->type) {
+            self::TYPE_MEDIA => $this->mediaLabel(),
+            self::TYPE_LOCATION => 'Joylashuv',
+            self::TYPE_POST => 'Ulashilgan post',
+            default => null,
+        };
+        if ($prefix !== null) {
+            return $caption !== '' ? $prefix.': '.mb_strimwidth(preg_replace('/\s+/u', ' ', $caption) ?? '', 0, $length, '…') : $prefix;
+        }
 
         return mb_strimwidth(preg_replace('/\s+/u', ' ', (string) $this->body) ?? '', 0, $length, '…');
+    }
+
+    /** "Rasm", "3 ta rasm", "Video", "2 ta rasm, video" — meta'dagi turlar bo‘yicha (attachment yuklamasdan). */
+    public function mediaLabel(): string
+    {
+        $kinds = array_count_values($this->meta['kinds'] ?? ['image']);
+        $parts = [];
+        foreach (['image' => 'rasm', 'video' => 'video'] as $kind => $word) {
+            $n = $kinds[$kind] ?? 0;
+            if ($n > 0) {
+                $parts[] = $n > 1 ? "{$n} ta {$word}" : $word;
+            }
+        }
+
+        return ucfirst(implode(', ', $parts) ?: 'rasm');
     }
 
     public static function duration(int $seconds): string

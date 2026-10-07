@@ -26,8 +26,8 @@ class SecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        // Mikrofon — faqat o‘z saytimizda (ovozli xabar yozish uchun).
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()');
+        // Mikrofon (ovozli xabar), kamera (chatda rasm olish), joylashuv (chatda yuborish) — faqat o‘z saytimizda.
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
 
         if (config('fikrlash.security.hsts') && $request->isSecure()) {
@@ -59,7 +59,8 @@ class SecurityHeaders
             "script-src {$script}",
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$dev}",
             "font-src 'self' data: https://fonts.bunny.net",
-            "img-src 'self' data: blob: {$media}",
+            // tile.openstreetmap.org — chatdagi joylashuv xaritasi.
+            "img-src 'self' data: blob: https://tile.openstreetmap.org {$media}",
             // Ovozli xabar: yozib olingandan keyin yuborilguncha blob: dan eshitiladi.
             "media-src 'self' blob: {$media}",
             "connect-src 'self' {$dev} {$devWs}",

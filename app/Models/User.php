@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Gender;
 use App\Enums\MessagePrivacy;
+use App\Enums\NotificationType;
 use App\Enums\PostStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
@@ -65,6 +66,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'role' => UserRole::class,
             'status' => UserStatus::class,
             'messages_from' => MessagePrivacy::class,
+            'notification_settings' => 'array',
             'gender' => Gender::class,
             'followers_count' => 'integer',
             'following_count' => 'integer',
@@ -148,6 +150,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     // ---- Helpers ----
 
     /** Tasdiqlangan akkaunt (admin bergan belgi). */
+    /** Bildirishnoma turi yoqilganmi (sozlamalarda o‘chirilmagan). Majburiy turlar — doim yoqiq. */
+    public function wantsNotification(NotificationType $type): bool
+    {
+        if (! in_array($type, NotificationType::optional(), true)) {
+            return true;
+        }
+
+        return ! in_array($type->value, $this->notification_settings['muted'] ?? [], true);
+    }
+
     public function isVerified(): bool
     {
         return $this->verified_at !== null;

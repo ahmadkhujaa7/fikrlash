@@ -14,6 +14,8 @@
     $me = auth()->user();
     $author = $post->user;
     $url = route('posts.show', $post);
+    $shareText = $isArticle ? (string) $post->title : $post->summary(120);
+    $shareArgs = \Illuminate\Support\Js::from($url).', '.\Illuminate\Support\Js::from($shareText).', '.$post->id;
     $time = $post->published_at ?? $post->created_at;
     $heart = 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z';
     $canDismiss = ! $detail && $me && ! $post->isOwnedBy($me) && $post->isPublished();
@@ -61,10 +63,11 @@
 
         <x-dropdown label="Post amallari">
             <x-slot:trigger class="-mr-2 !p-1.5"><x-ico name="dots" size="size-5" /></x-slot:trigger>
-            <x-dropdown-item icon="link" @click="sharePost('{{ $url }}', ''); open = false">Havolani ulashish</x-dropdown-item>
+            <x-dropdown-item icon="share" @click="sharePost({{ $shareArgs }}); open = false">Ulashish</x-dropdown-item>
             @if ($me && $post->isOwnedBy($me))
                 <x-dropdown-item icon="pencil" :href="route('posts.edit', $post)">Tahrirlash</x-dropdown-item>
-                <form method="POST" action="{{ route('posts.destroy', $post) }}" x-data @submit="confirm('Postni o‘chirasizmi?') || $event.preventDefault()">
+                <form method="POST" action="{{ route('posts.destroy', $post) }}" data-post-url="{{ $url }}" x-data @submit.prevent="deletePost($el)"
+                      data-confirm="Post o‘chirilsinmi?" data-confirm-text="O‘chirilgan postni qaytarib bo‘lmaydi." data-confirm-ok="O‘chirish">
                     @csrf @method('DELETE')
                     <x-dropdown-item icon="trash" type="submit" danger>O‘chirish</x-dropdown-item>
                 </form>
@@ -117,7 +120,8 @@
     @endif
 
     @if ($post->image_path && ! $isArticle)
-        <a href="{{ $detail ? $post->imageUrl() : $url }}" class="mt-5 block overflow-hidden rounded-2xl bg-sunken" @if ($detail) target="_blank" rel="noopener" @else data-post-link @endif>
+        {{-- Bosilganda — to‘liq ekranda ko‘rish (yangi oynada ochish — Ctrl/⌘ bilan) --}}
+        <a href="{{ $detail ? $post->imageUrl() : $url }}" class="mt-5 block cursor-zoom-in overflow-hidden rounded-2xl bg-sunken" data-lightbox="" data-full="{{ $post->imageUrl() }}" @if ($detail) target="_blank" rel="noopener" @endif>
             <img src="{{ $post->imageUrl() }}" alt="Post rasmi" loading="lazy" class="{{ $detail ? 'w-full' : 'max-h-[28rem] w-full object-cover' }}">
         </a>
     @endif
@@ -169,7 +173,7 @@
                         <svg class="size-[18px]" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" fill="{{ $post->is_saved ? 'currentColor' : 'none' }}" :fill="active ? 'currentColor' : 'none'" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $bookmark }}"/></svg>
                     </button>
                 @endauth
-                <button type="button" class="rounded-full p-2 transition-colors hover:bg-sunken hover:text-ink" @click="sharePost('{{ $url }}', '')" aria-label="Ulashish">
+                <button type="button" class="rounded-full p-2 transition-colors hover:bg-sunken hover:text-ink" @click="sharePost(@js($url), @js($shareText), {{ $post->id }})" aria-label="Ulashish">
                     <x-ico name="share" size="size-[18px]" />
                 </button>
             </div>

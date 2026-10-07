@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\SmsProvider;
+use App\Models\Announcement;
 use App\Models\Comment;
 use App\Models\PersonalAccessToken;
 use App\Models\Post;
@@ -64,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
             'post' => Post::class,
             'comment' => Comment::class,
             'report' => Report::class,
+            'announcement' => Announcement::class,
         ]);
 
         // Development'da N+1 va boshqa xatolarni erta ushlash.

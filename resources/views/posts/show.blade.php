@@ -45,7 +45,7 @@
                 <span class="truncate">{{ $isArticle ? $post->title : $post->user->name }}</span>
             </p>
         </div>
-        <button type="button" class="icon-btn" @click="sharePost('{{ $post->url() }}', '')" aria-label="Ulashish"><x-ico name="share" size="size-[19px]" /></button>
+        <button type="button" class="icon-btn" @click="sharePost(@js($post->url()), @js($post->isArticle() ? (string) $post->title : $post->summary(120)), {{ $post->id }})" aria-label="Ulashish"><x-ico name="share" size="size-[19px]" /></button>
     </div>
 
     @include('posts._detail')

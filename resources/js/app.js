@@ -5,6 +5,8 @@ import { api, fetchHtml, postForm } from './api';
 import { initViewTracking, readTimer } from './views';
 import { captureFeed, rememberFeedChunk, restoreFeedPosition } from './navigation';
 import { registerBadges, registerInbox, registerThread } from './chat';
+import { registerUi } from './ui';
+import { registerDevice } from './device';
 
 window.Alpine = Alpine;
 Alpine.plugin(intersect);
@@ -284,9 +286,16 @@ const draftStore = {
 const escapeHtml = (s) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
 /** Oldindan ko‘rish uchun: serverdagi ContentFormatter bilan bir xil ko‘rinish (avval escape, keyin havolalar). */
+/** Havolalar: http(s)://... va http'siz domenlar (sayt.uz) — serverdagi ContentFormatter bilan bir xil. */
+const TLDS = 'uz|com|net|org|ru|io|me|info|biz|edu|gov|dev|app|ai|co|tv|kz|kg|tj|tm|az|tr|de|uk|us|eu|ua|by|xyz|online|site|store|shop|tech|pro|blog|news|club|academy|media|link|live|world|today|space|website|cloud';
+const LINK_RE = new RegExp(`https?:\\/\\/[^\\s<>"]+|(?<![\\p{L}\\p{N}_@./:#&-])(?:www\\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+(?:${TLDS})(?![\\p{L}\\p{N}_-])(?:\\/[^\\s<>"]*)?`, 'giu');
+function linkify(escaped) {
+    return escaped.replace(LINK_RE, (url) => `<a class="link">${url.replace(/^https?:\/\//i, '').replace(/^www\./i, '').slice(0, 48)}</a>`);
+}
+
 function formatPreview(text) {
     let html = escapeHtml(text.trim().replace(/\n{3,}/g, '\n\n'));
-    html = html.replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a class="link">${url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}</a>`);
+    html = linkify(html);
     html = html.replace(/(^|[^\p{L}\p{N}_@/])@([A-Za-z0-9_]{3,30})/gu, '$1<a class="mention">@$2</a>');
     html = html.replace(new RegExp(`(^|[^\\p{L}\\p{N}_&/#;])#(${WORD}{2,50})`, 'gu'), '$1<a class="hashtag">#$2</a>');
     return html.replace(/\n/g, '<br>') || '<span class="text-muted">Matn yozilganda shu yerda ko‘rinadi.</span>';
@@ -625,7 +634,7 @@ const MD_SHORTCUT = /^(#{1,3}|>|[-*•]|1[.)])\s/;
 /** Preview uchun: serverdagi ContentFormatter::toHtml($text, rich: true) bilan bir xil natija. */
 function richText(text) {
     let html = escapeHtml(text.trim());
-    html = html.replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a class="link">${url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}</a>`);
+    html = linkify(html);
     html = html.replace(/(^|[^\p{L}\p{N}_@/])@([A-Za-z0-9_]{3,30})/gu, '$1<a class="mention">@$2</a>');
     html = html.replace(new RegExp(`(^|[^\\p{L}\\p{N}_&/#;])#(${WORD}{2,50})`, 'gu'), '$1<a class="hashtag">#$2</a>');
     html = html.replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/gu, '<strong>$1</strong>');
@@ -1306,7 +1315,7 @@ Alpine.data('comments', ({ url }) => ({
         }
     },
     async remove(id, url) {
-        if (!confirm('Izohni o‘chirasizmi?')) return;
+        if (!(await window.confirmAction({ title: 'Izoh o‘chirilsinmi?', text: 'Unga yozilgan javoblar ham ko‘rinmay qoladi.', ok: 'O‘chirish' }))) return;
         try {
             await api('DELETE', url);
             document.getElementById(`comment-${id}`)?.remove();
@@ -1343,18 +1352,24 @@ Alpine.data('reporter', () => ({
     },
 }));
 
-/* ---------- Ulashish ---------- */
-window.sharePost = async (url, text) => {
-    if (navigator.share) {
-        try {
-            await navigator.share({ url, text });
-        } catch {
-            /* foydalanuvchi bekor qildi */
+/* ---------- Postni o‘chirish (lentada — kartaning o‘zi yo‘qoladi, post sahifasida — profilga) ---------- */
+window.deletePost = async (form) => {
+    try {
+        const data = await api('DELETE', form.action);
+        const card = form.closest('article');
+        const onPostPage = form.dataset.postUrl && new URL(form.dataset.postUrl, location.href).pathname === location.pathname;
+        if (onPostPage || !card) {
+            location.href = data.redirect;
+            return;
         }
-        return;
+        card.style.transition = 'opacity .2s ease, transform .2s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.98)';
+        setTimeout(() => card.remove(), 200);
+        toast(data.message, 'success');
+    } catch (e) {
+        toast(e.message, 'error');
     }
-    await navigator.clipboard.writeText(url);
-    toast('Havola nusxalandi.', 'success');
 };
 
 /* ---------- Navigatsiya yordamchilari (asosiysi — navigation.js) ---------- */
@@ -1510,6 +1525,8 @@ Alpine.data('dismissable', (url) => ({
 registerBadges(Alpine);
 registerInbox(Alpine);
 registerThread(Alpine);
+registerUi(Alpine);
+registerDevice(Alpine);
 
 Alpine.data('readTimer', readTimer);
 

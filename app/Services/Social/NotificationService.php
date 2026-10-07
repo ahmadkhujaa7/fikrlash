@@ -19,6 +19,10 @@ class NotificationService
             return null; // o‘ziga o‘zi bildirishnoma yubormaydi
         }
 
+        if (! $recipient->wantsNotification($type)) {
+            return null; // foydalanuvchi sozlamalarda bu turni o‘chirgan
+        }
+
         $attributes = [
             'user_id' => $recipient->id,
             'actor_id' => $actor?->id,
@@ -61,6 +65,14 @@ class NotificationService
     public function forgetUnreadCount(int $userId): void
     {
         Cache::forget($this->unreadKey($userId));
+    }
+
+    /** @param  list<int>  $userIds */
+    public function forgetUnreadCounts(array $userIds): void
+    {
+        if ($userIds) {
+            Cache::deleteMultiple(array_map(fn (int $id) => $this->unreadKey($id), $userIds));
+        }
     }
 
     private function unreadKey(int $userId): string

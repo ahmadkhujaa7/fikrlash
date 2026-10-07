@@ -45,7 +45,11 @@ echo.
 rem Brauzer server tayyor bo'lgandan keyin ochiladi (avval ochilsa "sahifa topilmadi" chiqadi).
 start "" /min powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 40;$i++){try{Invoke-WebRequest 'http://127.0.0.1:8000/up' -UseBasicParsing -TimeoutSec 2 | Out-Null; Start-Process 'http://localhost:8000'; break}catch{Start-Sleep -Milliseconds 500}}"
 
-php artisan serve --host=127.0.0.1 --port=8000
+rem Chatda rasm/video yuborish uchun yuklash chegarasi kattaroq (PHP standarti 2 MB).
+rem "php artisan serve" bu sozlamalarni o'tkazmaydi - shuning uchun server to'g'ridan-to'g'ri ishga tushiriladi.
+pushd public
+php -d upload_max_filesize=64M -d post_max_size=80M -d memory_limit=512M -S 127.0.0.1:8000 "%~dp0vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php"
+popd
 echo.
 echo Server to'xtadi. Yuqoridagi xabarni o'qing.
 pause

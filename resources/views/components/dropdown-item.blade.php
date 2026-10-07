@@ -3,5 +3,6 @@
 @if ($href)
     <a href="{{ $href }}" role="menuitem" {{ $attributes->merge(['class' => $cls]) }}>@if ($icon)<x-ico :name="$icon" size="size-4" class="text-muted" />@endif {{ $slot }}</a>
 @else
-    <button type="button" role="menuitem" {{ $attributes->merge(['class' => $cls]) }}>@if ($icon)<x-ico :name="$icon" size="size-4" class="text-muted" />@endif {{ $slot }}</button>
+    {{-- type standart "button"; formadagi amallar uchun type="submit" berilsa — o‘sha ishlaydi. --}}
+    <button role="menuitem" {{ $attributes->merge(['class' => $cls, 'type' => 'button']) }}>@if ($icon)<x-ico :name="$icon" size="size-4" class="text-muted" />@endif {{ $slot }}</button>
 @endif

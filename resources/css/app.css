@@ -498,7 +498,7 @@
     /* ---- Xabarlar ---- */
     /* Kompyuterda — varaq ichida; mobilda — butun ekran (klaviatura ochilganda ko‘rinadigan qismga moslashadi, JS) */
     .chat-screen {
-        @apply flex flex-col overflow-hidden bg-paper sm:rounded-[28px];
+        @apply relative flex flex-col overflow-hidden bg-paper sm:rounded-[28px];
         height: calc(100dvh - 6.25rem);
     }
     .chat-composer {
@@ -579,6 +579,17 @@
         background-image: linear-gradient(160deg, var(--brand-a), var(--brand-b));
         box-shadow: 0 8px 18px -10px rgb(48 73 209 / 0.8);
     }
+    /* Yoqish/o‘chirish tugmasi (checkbox) */
+    .switch {
+        @apply relative h-7 w-12 shrink-0 cursor-pointer appearance-none rounded-full bg-line-strong transition-colors duration-200 checked:bg-lapis focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lapis disabled:cursor-not-allowed disabled:opacity-50;
+    }
+    .switch::after {
+        @apply absolute left-[3px] top-[3px] size-[22px] rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-200;
+        content: '';
+    }
+    .switch:checked::after {
+        transform: translateX(20px);
+    }
     .sheet-item {
         @apply flex w-full items-center gap-3.5 bg-sunken/60 px-4 py-3.5 text-left text-[15px] text-ink transition-colors hover:bg-sunken;
     }
@@ -594,6 +605,60 @@
     }
     .msg-flash .bubble {
         animation: msg-flash 1.2s ease-out;
+    }
+    /* Rasm/video albomi: pufak ichida, chetlariga yaqin (Telegram uslubi) */
+    .bubble:has(> .msg-media) {
+        --media-w: min(300px, 66vw);
+        width: calc(var(--media-w) + 8px);
+    }
+    .bubble:has(> .msg-media:not(.has-caption)) {
+        @apply pb-1 pt-1;
+    }
+    .msg-media {
+        @apply relative -mx-2.5 grid grid-cols-2 gap-[2px] overflow-hidden rounded-[16px];
+        width: var(--media-w);
+    }
+    .msg-media-cell {
+        @apply relative block aspect-square overflow-hidden bg-ink/10;
+    }
+    .msg-media.n-1 {
+        @apply grid-cols-1;
+    }
+    .msg-media.n-1 > .msg-media-cell {
+        aspect-ratio: 4 / 3;
+        max-height: 420px;
+    }
+    .msg-media.n-3 > .msg-media-cell:first-of-type {
+        @apply col-span-2;
+        aspect-ratio: 2 / 1;
+    }
+    /* Izohsiz albomda vaqt — rasm ustida */
+    .msg-media:not(.has-caption) ~ .msg-meta {
+        @apply absolute bottom-2.5 right-3 top-auto float-none m-0 rounded-full bg-ink/50 px-1.5 py-px text-white opacity-100 backdrop-blur-sm;
+    }
+    /* Joylashuv: OpenStreetMap parchalari */
+    .msg-map {
+        @apply relative block h-[150px] w-full overflow-hidden rounded-[14px] bg-[#e9e5dc];
+    }
+    .msg-map-tiles {
+        @apply absolute left-1/2 top-0 h-[150px] w-[260px] -translate-x-1/2;
+    }
+    .msg-map-tiles img {
+        @apply absolute size-64 max-w-none select-none;
+    }
+    .msg-map-pin {
+        @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full text-anor;
+        filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+    }
+    /* Ulashilgan post kartasi */
+    .msg-post {
+        @apply -mx-1 mb-0.5 block min-w-[220px] max-w-[300px] rounded-2xl px-3 py-2.5;
+    }
+    .bubble-mine .msg-post {
+        @apply bg-white/15;
+    }
+    .bubble-theirs .msg-post {
+        @apply bg-paper ring-1 ring-line;
     }
 
     /* Yoqtirish — bosilganda yurakcha "tepadi" */
@@ -631,6 +696,10 @@
         z-index: 40;
         height: 100dvh;
         border-radius: 0;
+    }
+    html.overlay-lock,
+    html.overlay-lock body {
+        overflow: hidden;
     }
     html.chat-lock,
     html.chat-lock body {

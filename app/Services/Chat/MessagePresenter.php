@@ -3,11 +3,13 @@
 namespace App\Services\Chat;
 
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Support\ContentFormatter;
 use App\Support\Time;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Xabarni brauzer uchun JSON ko‘rinishiga keltiradi. Matn faqat serverda (ContentFormatter orqali)
@@ -31,8 +33,11 @@ class MessagePresenter
             'mine' => $mine,
             'type' => $message->type,
             'removed' => $removed,
-            'html' => ! $removed && ! $message->isVoice() ? ContentFormatter::toHtml((string) $message->body, rich: true) : null,
+            'html' => ! $removed && ! $message->isVoice() && $message->body !== null ? ContentFormatter::toHtml((string) $message->body, rich: true) : null,
             'body' => $mine && ! $removed && ! $message->isVoice() ? $message->body : null,
+            'media' => ! $removed && $message->type === Message::TYPE_MEDIA ? $this->media($message) : null,
+            'location' => ! $removed && $message->type === Message::TYPE_LOCATION ? $message->meta : null,
+            'post' => ! $removed && $message->type === Message::TYPE_POST ? $this->post($message, $viewer) : null,
             'voice' => ! $removed && $message->isVoice() ? [
                 'url' => route('messages.voice', [$message->conversation_id, $message->id]),
                 'duration' => (int) $message->voice_duration,
@@ -49,6 +54,55 @@ class MessagePresenter
             'time' => $message->created_at->format('H:i'),
             'day' => $message->created_at->toDateString(),
             'day_label' => self::dayLabel($message->created_at),
+        ];
+    }
+
+    /** @return list<array{id: int, kind: string, url: string, poster: ?string, w: ?int, h: ?int, duration: ?int}> */
+    private function media(Message $message): array
+    {
+        if (! $message->relationLoaded('attachments')) {
+            return [];
+        }
+
+        return $message->attachments->map(function (MessageAttachment $a) use ($message) {
+            $url = route('messages.media', [$message->conversation_id, $message->id, $a->id]);
+
+            return [
+                'id' => $a->id,
+                'kind' => $a->kind,
+                'url' => $url,
+                'poster' => $a->poster_path ? $url.'?poster=1' : null,
+                'w' => $a->width,
+                'h' => $a->height,
+                'duration' => $a->duration,
+            ];
+        })->values()->all();
+    }
+
+    /** Ulashilgan post: suhbatdosh uni ko‘ra olmasa (yopiq yoki o‘chirilgan) — "mavjud emas". */
+    private function post(Message $message, User $viewer): array
+    {
+        $post = $message->relationLoaded('post') ? $message->post : null;
+        if (! $post || ! Gate::forUser($viewer)->allows('view', $post)) {
+            return ['available' => false];
+        }
+
+        $author = $post->user;
+
+        return [
+            'available' => true,
+            'url' => $post->url(),
+            'title' => $post->isArticle() ? $post->title : null,
+            'text' => $post->summary(180),
+            'image' => $post->imageUrl(),
+            'author' => [
+                'name' => $author?->name,
+                'username' => $author?->username,
+                'avatar' => $author?->avatarUrl(),
+                'initials' => $author?->initials(),
+                'tone' => $author?->tone(),
+                'verified' => (bool) $author?->isVerified(),
+            ],
         ];
     }
 

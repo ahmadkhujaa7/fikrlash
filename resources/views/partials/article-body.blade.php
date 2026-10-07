@@ -28,7 +28,7 @@
                 @break
             @case('image')
                 <figure>
-                    <a href="{{ Post::mediaUrl($block['path']) }}" target="_blank" rel="noopener">
+                    <a href="{{ Post::mediaUrl($block['path']) }}" target="_blank" rel="noopener" class="cursor-zoom-in" data-lightbox="article" data-caption="{{ $block['caption'] ?? '' }}">
                         <img src="{{ Post::mediaUrl($block['path']) }}" alt="{{ $block['caption'] ?? '' }}" loading="{{ $loop->index < 3 ? 'eager' : 'lazy' }}" decoding="async"
                              @if (! empty($block['w'])) width="{{ $block['w'] }}" height="{{ $block['h'] }}" @endif>
                     </a>

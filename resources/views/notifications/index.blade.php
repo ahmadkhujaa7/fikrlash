@@ -12,17 +12,38 @@
         T::Mentioned->value => ['hashtag', 'text-ink-soft bg-sunken'],
         T::PostModerated->value => ['shield', 'text-ink-soft bg-sunken'],
         T::System->value => ['bulb', 'text-ink-soft bg-sunken'],
+        T::Announcement->value => ['megaphone', 'text-lapis bg-lapis-soft'],
     ];
 @endphp
 
 @section('content')
-    <x-page-header title="Bildirishnomalar" class="border-b border-line" />
+    <x-page-header title="Bildirishnomalar" class="border-b border-line">
+        <a href="{{ route('settings.notifications') }}" class="icon-btn" aria-label="Bildirishnoma sozlamalari" title="Sozlamalar"><x-ico name="settings" /></a>
+    </x-page-header>
+
+    {{-- Brauzer bildirishnomalarini yoqish taklifi (faqat hali so‘ralmagan bo‘lsa) --}}
+    <div x-data="pushOffer" x-show="visible" x-cloak class="mx-4 mt-4 flex items-start gap-3 rounded-2xl bg-lapis-soft/70 p-4 sm:mx-6">
+        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-lapis text-white"><x-ico name="bell" size="size-[18px]" /></span>
+        <div class="min-w-0 flex-1">
+            <p class="text-[14.5px] font-medium text-ink">Yangiliklarni o‘tkazib yubormang</p>
+            <p class="mt-0.5 text-[13px] leading-relaxed text-ink-soft">Yangi xabar va bildirishnomalar telefon yoki kompyuteringizda ko‘rinsin.</p>
+            <div class="mt-3 flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm" @click="enable()">Yoqish</button>
+                <button type="button" class="btn btn-ghost btn-sm" @click="dismiss()">Keyinroq</button>
+            </div>
+        </div>
+    </div>
+
     <ul class="stream">
         @forelse ($notifications as $n)
             @php
                 $p = NotificationPresenter::present($n);
                 [$icon, $tone] = $icons[$n->type->value];
             @endphp
+            @if ($n->type === T::Announcement && $n->subject)
+                @include('notifications._announcement', ['n' => $n, 'a' => $n->subject])
+                @continue
+            @endif
             <li class="relative flex gap-4 px-4 py-5 sm:px-6 {{ $n->isRead() ? '' : 'bg-sunken/70' }}">
                 <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full {{ $tone }}">
                     <x-ico :name="$icon" size="size-5" :solid="$n->type === T::PostLiked" />

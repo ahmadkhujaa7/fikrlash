@@ -7,7 +7,14 @@
 
     <div class="px-4 sm:px-6">
         <div class="-mt-14 flex items-end justify-between gap-4 sm:-mt-16">
-            <x-avatar :user="$user" size="xl" class="relative z-10 !size-24 ring-[5px] ring-paper sm:!size-28 sm:!text-5xl" />
+            @if ($user->avatarUrl())
+                {{-- Bir marta bosilganda profil rasmi to‘liq ekranda ochiladi --}}
+                <button type="button" class="relative z-10 shrink-0 cursor-zoom-in rounded-full transition-transform active:scale-[0.97]" data-lightbox="" data-full="{{ $user->avatarUrl() }}" aria-label="Profil rasmini ko‘rish">
+                    <x-avatar :user="$user" size="xl" class="!size-24 ring-[5px] ring-paper sm:!size-28" />
+                </button>
+            @else
+                <x-avatar :user="$user" size="xl" class="relative z-10 !size-24 ring-[5px] ring-paper sm:!size-28 sm:!text-5xl" />
+            @endif
             <div class="flex gap-2 pb-1">
                 @if ($isOwner)
                     {{-- O‘z profilim: akkaunt menyusi (mobilda yuqori paneldagi avatar menyusi o‘rniga) --}}
@@ -29,7 +36,7 @@
                     @auth
                         <x-dropdown label="Ko‘proq">
                             <x-slot:trigger class="border border-line-strong !p-2"><x-ico name="dots" /></x-slot:trigger>
-                            <x-dropdown-item icon="link" @click="sharePost('{{ $user->profileUrl() }}', ''); open = false">Profil havolasi</x-dropdown-item>
+                            <x-dropdown-item icon="link" @click="sharePost({{ \Illuminate\Support\Js::from($user->profileUrl()) }}, {{ \Illuminate\Support\Js::from($user->name) }}); open = false">Profil havolasini ulashish</x-dropdown-item>
                             <x-dropdown-item icon="flag" danger @click="$dispatch('report', { type: 'user', id: {{ $user->id }} }); open = false">Shikoyat qilish</x-dropdown-item>
                         </x-dropdown>
                         @php

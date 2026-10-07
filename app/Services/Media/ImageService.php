@@ -37,6 +37,19 @@ class ImageService
         ];
     }
 
+    /**
+     * Istalgan diskka (masalan, chat uchun yopiq "local") qayta encode qilingan WebP sifatida saqlaydi.
+     *
+     * @return array{path: string, width: int, height: int, size: int}
+     */
+    public function storeTo(UploadedFile $file, string $disk, string $directory, int $maxWidth): array
+    {
+        $image = $this->resizeToWidth($this->load($file), $maxWidth);
+        $path = $this->save($image, $directory, $disk);
+
+        return ['path' => $path, 'width' => imagesx($image), 'height' => imagesy($image), 'size' => (int) Storage::disk($disk)->size($path)];
+    }
+
     public function storeAvatar(UploadedFile $file): string
     {
         $image = $this->load($file);
@@ -124,14 +137,14 @@ class ImageService
         return $canvas;
     }
 
-    private function save(GdImage $image, string $directory): string
+    private function save(GdImage $image, string $directory, ?string $disk = null): string
     {
         ob_start();
         imagewebp($image, null, (int) config('fikrlash.media.webp_quality'));
         $binary = (string) ob_get_clean();
 
         $path = $directory.'/'.Str::uuid().'.webp';
-        Storage::disk($this->disk())->put($path, $binary, ['visibility' => 'public', 'ContentType' => 'image/webp']);
+        Storage::disk($disk ?? $this->disk())->put($path, $binary, $disk ? [] : ['visibility' => 'public', 'ContentType' => 'image/webp']);
 
         return $path;
     }

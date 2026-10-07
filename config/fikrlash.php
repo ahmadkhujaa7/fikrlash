@@ -87,6 +87,12 @@ return [
     'chat' => [
         'message_max' => 4000,
         'voice_disk' => env('CHAT_VOICE_DISK', 'local'),
+        'media_disk' => env('CHAT_MEDIA_DISK', 'local'), // rasm va videolar (yopiq)
+        'max_attachments' => 10,
+        'image_max_kb' => 15360,  // brauzer odatda rasmni yuborishdan oldin kichraytiradi
+        'image_max_width' => 2048,
+        'video_max_kb' => 51200,  // 50 MB (PHP upload_max_filesize ham shunga yetarli bo‘lsin)
+        'video_max_seconds' => 600,
         'voice_max_seconds' => 300,
         'voice_max_kb' => 8192,
         'edit_window_hours' => null, // null = cheklovsiz tahrirlash

@@ -8,10 +8,12 @@ use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\MessageReaction;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
@@ -25,7 +27,7 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class ChatService
 {
-    public function __construct(private VoiceStore $voices) {}
+    public function __construct(private VoiceStore $voices, private ChatMediaStore $media) {}
 
     /** Ikki kishi o‘rtasidagi suhbat (bo‘lmasa yaratiladi). */
     public function between(User $me, User $other): Conversation
@@ -85,7 +87,12 @@ class ChatService
     }
 
     /**
-     * @param  array{body?: string|null, voice?: UploadedFile|null, duration?: int|null, waveform?: array|null, reply_to_id?: int|null}  $data
+     * Xabar yuborish. Turi ma'lumotga qarab: ovoz → voice, fayllar → media (rasm/video, izoh bilan),
+     * joylashuv → location, post → post (izoh bilan), aks holda — matn.
+     *
+     * @param  array{body?: string|null, voice?: UploadedFile|null, duration?: int|null, waveform?: mixed,
+     *     files?: list<UploadedFile>, posters?: array<int, UploadedFile>, durations?: array<int, int>, dims?: array<int, string>,
+     *     location?: array{lat: float, lng: float, acc?: float|null}|null, post_id?: int|null, reply_to_id?: int|null}  $data
      *
      * @throws ChatException
      */
@@ -101,20 +108,65 @@ class ChatService
             $replyTo = $conversation->messages()->whereKey($data['reply_to_id'])->whereNull('removed_at')->first();
         }
 
+        $post = null;
+        if (! empty($data['post_id'])) {
+            $post = Post::query()->find($data['post_id']);
+            if (! $post || ! Gate::forUser($sender)->allows('view', $post)) {
+                throw new ChatException('Bu postni ulashib bo‘lmaydi.');
+            }
+        }
+
+        $files = array_values(array_filter($data['files'] ?? [], fn ($f) => $f instanceof UploadedFile));
+        if (count($files) > (int) config('fikrlash.chat.max_attachments')) {
+            throw new ChatException('Bir xabarda ko‘pi bilan '.config('fikrlash.chat.max_attachments').' ta fayl.');
+        }
+
         $voice = ($data['voice'] ?? null) instanceof UploadedFile ? $this->voices->store($data['voice']) : null;
+        $stored = [];
 
         try {
-            $message = DB::transaction(function () use ($conversation, $sender, $data, $voice, $replyTo) {
+            foreach ($files as $i => $file) {
+                $stored[] = $this->storeFile($file, $i, $data);
+            }
+
+            $location = $data['location'] ?? null;
+            $type = match (true) {
+                $voice !== null => Message::TYPE_VOICE,
+                $stored !== [] => Message::TYPE_MEDIA,
+                $location !== null => Message::TYPE_LOCATION,
+                $post !== null => Message::TYPE_POST,
+                default => Message::TYPE_TEXT,
+            };
+            $body = trim((string) ($data['body'] ?? ''));
+            if ($type === Message::TYPE_TEXT && $body === '') {
+                throw new ChatException('Xabar yozing.');
+            }
+
+            $message = DB::transaction(function () use ($conversation, $sender, $data, $voice, $replyTo, $post, $stored, $location, $type, $body) {
                 $message = $conversation->messages()->create([
                     'user_id' => $sender->id,
                     'reply_to_id' => $replyTo?->id,
-                    'type' => $voice ? Message::TYPE_VOICE : Message::TYPE_TEXT,
-                    'body' => $voice ? null : trim((string) $data['body']),
+                    'post_id' => $post?->id,
+                    'type' => $type,
+                    'body' => $voice || $type === Message::TYPE_LOCATION ? null : ($body !== '' ? $body : null),
                     'voice_path' => $voice['path'] ?? null,
                     'voice_mime' => $voice['mime'] ?? null,
                     'voice_duration' => $voice ? max(1, min((int) ($data['duration'] ?? 1), (int) config('fikrlash.chat.voice_max_seconds'))) : null,
                     'voice_waveform' => $voice ? $this->waveform($data['waveform'] ?? null) : null,
+                    'meta' => match ($type) {
+                        Message::TYPE_MEDIA => ['kinds' => array_column($stored, 'kind')],
+                        Message::TYPE_LOCATION => [
+                            'lat' => round((float) $location['lat'], 6),
+                            'lng' => round((float) $location['lng'], 6),
+                            'acc' => isset($location['acc']) ? (int) round((float) $location['acc']) : null,
+                        ],
+                        default => null,
+                    },
                 ]);
+
+                foreach ($stored as $position => $item) {
+                    $message->attachments()->create($item + ['position' => $position]);
+                }
 
                 $conversation->forceFill(['last_message_id' => $message->id, 'last_message_at' => $message->created_at])->save();
                 // O‘zi yozgan xabarni o‘qigan hisoblanadi.
@@ -124,6 +176,7 @@ class ChatService
             });
         } catch (\Throwable $e) {
             $this->voices->delete($voice['path'] ?? null);
+            $this->media->deleteMany($stored);
             throw $e;
         }
 
@@ -133,11 +186,42 @@ class ChatService
         return $message;
     }
 
+    /** Fayl turi: rasm yoki video (mijoz aytgan MIME emas — tarkibi bo‘yicha aniqlanadi). */
+    private function storeFile(UploadedFile $file, int $i, array $data): array
+    {
+        $isImage = @getimagesize($file->getRealPath()) !== false;
+
+        if ($isImage) {
+            if ($file->getSize() > (int) config('fikrlash.chat.image_max_kb') * 1024) {
+                throw new ChatException('Rasm juda katta.');
+            }
+
+            return $this->media->storeImage($file);
+        }
+
+        if ($file->getSize() > (int) config('fikrlash.chat.video_max_kb') * 1024) {
+            throw new ChatException('Video '.intdiv((int) config('fikrlash.chat.video_max_kb'), 1024).' MB dan oshmasin.');
+        }
+        [$w, $h] = array_map('intval', explode('x', (string) ($data['dims'][$i] ?? '0x0')) + [0, 0]);
+
+        return $this->media->storeVideo(
+            $file,
+            ($data['posters'][$i] ?? null) instanceof UploadedFile ? $data['posters'][$i] : null,
+            isset($data['durations'][$i]) ? (int) $data['durations'][$i] : null,
+            $w ?: null,
+            $h ?: null,
+        );
+    }
+
     /** @throws ChatException */
     public function edit(Message $message, User $user, string $body): Message
     {
-        if (! $message->isOwnedBy($user) || $message->isRemoved() || $message->isVoice()) {
+        $editable = [Message::TYPE_TEXT, Message::TYPE_MEDIA, Message::TYPE_POST];
+        if (! $message->isOwnedBy($user) || $message->isRemoved() || ! in_array($message->type, $editable, true)) {
             throw new ChatException('Bu xabarni tahrirlab bo‘lmaydi.');
+        }
+        if ($message->type === Message::TYPE_TEXT && trim($body) === '') {
+            throw new ChatException('Xabar bo‘sh bo‘lmasin.');
         }
 
         $window = config('fikrlash.chat.edit_window_hours');
@@ -145,7 +229,7 @@ class ChatService
             throw new ChatException("Xabarni faqat {$window} soat ichida tahrirlash mumkin.");
         }
 
-        $body = trim($body);
+        $body = trim($body) !== '' ? trim($body) : null;
         if ($body !== $message->body) {
             $message->forceFill(['body' => $body, 'edited_at' => now()])->save();
         }
@@ -164,13 +248,16 @@ class ChatService
         }
 
         $path = $message->voice_path;
+        $files = $message->attachments()->get(['path', 'poster_path'])->toArray();
         DB::transaction(function () use ($message) {
             $message->reactions()->delete();
+            $message->attachments()->delete();
             $message->forceFill([
-                'body' => null, 'voice_path' => null, 'voice_waveform' => null, 'removed_at' => now(),
+                'body' => null, 'voice_path' => null, 'voice_waveform' => null, 'meta' => null, 'post_id' => null, 'removed_at' => now(),
             ])->save();
         });
         $this->voices->delete($path);
+        $this->media->deleteMany($files);
         $this->forgetUnread($message->loadMissing('conversation')->conversation->otherUser($user)?->id);
 
         return $message;

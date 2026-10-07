@@ -6,10 +6,14 @@ use App\Exceptions\ChatException;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\User;
+use App\Services\Chat\ChatMediaStore;
 use App\Services\Chat\ChatService;
 use App\Services\Chat\MessagePresenter;
 use App\Services\Chat\VoiceStore;
+use App\Services\Feed\SearchService;
+use App\Support\UploadLimits;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -52,6 +56,74 @@ class MessageController extends Controller
         $view = $request->query('fragment') === 'list' ? 'messages._list' : 'messages.index';
 
         return view($view, ['conversations' => $conversations, 'me' => $me]);
+    }
+
+    /** Postni yuborish oynasi uchun: so‘nggi suhbatdoshlar yoki qidiruv natijalari. */
+    public function recipients(Request $request, SearchService $search): JsonResponse
+    {
+        $me = $request->user();
+        $q = trim((string) $request->query('q', ''));
+
+        $users = $q === ''
+            ? Conversation::query()->forUser($me)->whereNotNull('last_message_id')->latest('last_message_at')->limit(12)
+                ->with('participants.user')->get()->map(fn (Conversation $c) => $c->otherUser($me))->filter()
+            : $search->users($q, 15);
+
+        return response()->json(['users' => $users
+            ->reject(fn (User $u) => $u->is($me))
+            ->unique('id')->values()
+            ->map(function (User $u) use ($me) {
+                $reason = $this->chat->cannotMessage($me, $u);
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'username' => $u->username,
+                    'avatar' => $u->avatarUrl(),
+                    'initials' => $u->initials(),
+                    'tone' => $u->tone(),
+                    'verified' => $u->isVerified(),
+                    'can' => $reason === null,
+                    'reason' => $reason,
+                ];
+            })]);
+    }
+
+    /** Postni bir yoki bir nechta odamga xabar sifatida yuborish (ixtiyoriy izoh bilan). */
+    public function share(Request $request): JsonResponse
+    {
+        $me = $request->user();
+        $data = $request->validate([
+            'post_id' => ['required', 'integer', 'exists:posts,id'],
+            'user_ids' => ['required', 'array', 'min:1', 'max:10'],
+            'user_ids.*' => ['integer', 'distinct'],
+            'body' => ['nullable', 'string', 'max:'.config('fikrlash.chat.message_max')],
+        ], ['user_ids.required' => 'Kimga yuborishni tanlang.', 'user_ids.max' => 'Bir martada ko‘pi bilan 10 kishiga.']);
+
+        $sent = 0;
+        $failed = [];
+        $users = User::query()->whereIn('id', $data['user_ids'])->get();
+
+        foreach ($users as $user) {
+            try {
+                if ($reason = $this->chat->cannotMessage($me, $user)) {
+                    throw new ChatException($reason);
+                }
+                $conversation = $this->chat->between($me, $user);
+                $this->chat->send($conversation, $me, ['post_id' => $data['post_id'], 'body' => $data['body'] ?? null]);
+                $sent++;
+            } catch (ChatException $e) {
+                $failed[] = ['name' => $user->name, 'reason' => $e->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'sent' => $sent,
+            'failed' => $failed,
+            'message' => $sent
+                ? ($sent === 1 ? 'Yuborildi.' : "{$sent} kishiga yuborildi.")
+                : (count($failed) === 1 ? $failed[0]['name'].': '.$failed[0]['reason'] : 'Yuborib bo‘lmadi.'),
+        ], $sent ? 200 : 422);
     }
 
     /** Profildagi "Xabar yozish": mavjud suhbatga yoki yangisiga. */
@@ -109,6 +181,15 @@ class MessageController extends Controller
                 'reactions' => config('fikrlash.chat.reactions'),
                 'maxLength' => (int) config('fikrlash.chat.message_max'),
                 'maxVoice' => (int) config('fikrlash.chat.voice_max_seconds'),
+                'media' => [
+                    'maxFiles' => (int) config('fikrlash.chat.max_attachments'),
+                    'imageMaxWidth' => (int) config('fikrlash.chat.image_max_width'),
+                    // Brauzer rasmni kichraytiradi; asl fayl uchun chegarani biroz kengroq olamiz.
+                    'imageMaxBytes' => (int) config('fikrlash.chat.image_max_kb') * 1024 * 4,
+                    'videoMaxBytes' => min((int) config('fikrlash.chat.video_max_kb') * 1024, UploadLimits::perFile()),
+                    'videoMaxSeconds' => (int) config('fikrlash.chat.video_max_seconds'),
+                    'postMaxBytes' => UploadLimits::perRequest(),
+                ],
                 'pollMs' => (int) config('fikrlash.chat.poll_seconds') * 1000,
                 'urls' => [
                     'send' => route('messages.store', $conversation),
@@ -172,22 +253,34 @@ class MessageController extends Controller
     {
         $this->authorize('view', $conversation);
         $max = (int) config('fikrlash.chat.message_max');
+        $fileKb = max((int) config('fikrlash.chat.image_max_kb'), (int) config('fikrlash.chat.video_max_kb'));
 
         $data = $request->validate([
-            'body' => ['nullable', 'required_without:voice', 'string', "max:{$max}"],
+            'body' => ['nullable', 'string', "max:{$max}"],
             'voice' => ['nullable', 'file', 'max:'.config('fikrlash.chat.voice_max_kb')],
             'duration' => ['nullable', 'integer', 'min:0', 'max:3600'],
             'waveform' => ['nullable', 'string', 'max:2000'],
+            'files' => ['nullable', 'array', 'max:'.config('fikrlash.chat.max_attachments')],
+            'files.*' => ['file', "max:{$fileKb}"],
+            'posters' => ['nullable', 'array'],
+            'posters.*' => ['nullable', 'file', 'max:4096'],
+            'durations' => ['nullable', 'array'],
+            'durations.*' => ['nullable', 'integer', 'min:0', 'max:36000'],
+            'dims' => ['nullable', 'array'],
+            'dims.*' => ['nullable', 'string', 'regex:/^\d{1,5}x\d{1,5}$/'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:lng'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:lat'],
+            'acc' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'post_id' => ['nullable', 'integer'],
             'reply_to_id' => ['nullable', 'integer'],
         ], [
-            'body.required_without' => 'Xabar yozing.',
             'body.max' => "Xabar {$max} belgidan oshmasligi kerak.",
             'voice.max' => 'Ovozli xabar juda katta.',
+            'files.max' => 'Bir xabarda ko‘pi bilan '.config('fikrlash.chat.max_attachments').' ta fayl.',
+            'files.*.file' => 'Fayl yuklanmadi — hajmi juda katta bo‘lishi mumkin.',
+            'files.*.uploaded' => 'Fayl yuklanmadi — hajmi juda katta bo‘lishi mumkin.',
+            'files.*.max' => 'Fayl juda katta.',
         ]);
-
-        if (! $request->hasFile('voice') && trim((string) ($data['body'] ?? '')) === '') {
-            return response()->json(['message' => 'Xabar yozing.'], 422);
-        }
 
         try {
             $message = $this->chat->send($conversation->load('participants.user'), $request->user(), [
@@ -195,6 +288,12 @@ class MessageController extends Controller
                 'voice' => $request->file('voice'),
                 'duration' => $data['duration'] ?? null,
                 'waveform' => $data['waveform'] ?? null,
+                'files' => $request->file('files', []),
+                'posters' => $request->file('posters', []),
+                'durations' => $data['durations'] ?? [],
+                'dims' => $data['dims'] ?? [],
+                'location' => isset($data['lat'], $data['lng']) ? ['lat' => $data['lat'], 'lng' => $data['lng'], 'acc' => $data['acc'] ?? null] : null,
+                'post_id' => $data['post_id'] ?? null,
                 'reply_to_id' => $data['reply_to_id'] ?? null,
             ]);
         } catch (ChatException $e) {
@@ -204,17 +303,23 @@ class MessageController extends Controller
         return response()->json(['message' => $this->presentOne($message, $request->user())], 201);
     }
 
+    /** Rasm, video yoki video muqovasi — faqat suhbat ishtirokchilariga. */
+    public function media(Request $request, Conversation $conversation, Message $message, MessageAttachment $attachment, ChatMediaStore $store): BaseResponse
+    {
+        $this->authorize('view', $conversation);
+        abort_if($message->isRemoved() || $attachment->message_id !== $message->id, 404);
+        abort_unless($this->visibleTo($message, $conversation->participantFor($request->user())), 404);
+
+        return $store->response($attachment, $request->boolean('poster'));
+    }
+
     public function update(Request $request, Conversation $conversation, Message $message): JsonResponse
     {
         $this->authorize('view', $conversation);
         $max = (int) config('fikrlash.chat.message_max');
-        $data = $request->validate(['body' => ['required', 'string', "max:{$max}"]], ['body.required' => 'Xabar bo‘sh bo‘lmasin.']);
+        $data = $request->validate(['body' => ['nullable', 'string', "max:{$max}"]]);
 
-        if (trim($data['body']) === '') {
-            return response()->json(['message' => 'Xabar bo‘sh bo‘lmasin.'], 422);
-        }
-
-        return $this->attempt(fn () => $this->chat->edit($message, $request->user(), $data['body']), $request);
+        return $this->attempt(fn () => $this->chat->edit($message, $request->user(), (string) ($data['body'] ?? '')), $request);
     }
 
     public function destroy(Request $request, Conversation $conversation, Message $message): JsonResponse
@@ -288,7 +393,7 @@ class MessageController extends Controller
         return Message::query()
             ->where('messages.conversation_id', $conversation->id)
             ->where('messages.id', '>', (int) ($participant?->cleared_message_id ?? 0))
-            ->with(['reactions', 'replyTo.user']);
+            ->with(['reactions', 'replyTo.user', 'attachments', 'post.user']);
     }
 
     private function visibleTo(Message $message, ?ConversationParticipant $participant): bool
@@ -321,6 +426,6 @@ class MessageController extends Controller
 
     private function presentOne(Message $message, User $viewer): array
     {
-        return $this->present->one($message->fresh(['reactions', 'replyTo.user']), $viewer);
+        return $this->present->one($message->fresh(['reactions', 'replyTo.user', 'attachments', 'post.user']), $viewer);
     }
 }

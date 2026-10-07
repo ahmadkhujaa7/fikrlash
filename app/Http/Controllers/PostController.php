@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Services\Feed\FeedService;
 use App\Services\Feed\ViewRecorder;
 use App\Services\Posts\PostService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -78,12 +79,17 @@ class PostController extends Controller
             : redirect()->route('posts.drafts')->with('toast', 'Qoralama yangilandi.');
     }
 
-    public function destroy(Request $request, Post $post): RedirectResponse
+    public function destroy(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         $this->authorize('delete', $post);
         $this->posts->delete($post);
+        $profile = route('profile.show', $request->user()->username);
 
-        return redirect()->route('profile.show', $request->user()->username)->with('toast', 'Post o‘chirildi.');
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Post o‘chirildi.', 'redirect' => $profile]);
+        }
+
+        return redirect($profile)->with('toast', 'Post o‘chirildi.');
     }
 
     public function drafts(Request $request): View

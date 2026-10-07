@@ -14,7 +14,7 @@
                 </label>
             </form>
             @if ($user->avatar_path)
-                <form method="POST" action="{{ route('settings.avatar.destroy') }}">
+                <form method="POST" action="{{ route('settings.avatar.destroy') }}" data-confirm="Profil rasmi olib tashlansinmi?" data-confirm-ok="Olib tashlash">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-ghost btn-sm">Olib tashlash</button>
                 </form>

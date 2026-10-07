@@ -12,6 +12,8 @@
     <x-tabs :items="[
         ['label' => 'Profil', 'href' => route('settings.profile'), 'active' => request()->routeIs('settings.profile')],
         ['label' => 'Xavfsizlik', 'href' => route('settings.security'), 'active' => request()->routeIs('settings.security')],
+        ['label' => 'Bildirishnomalar', 'href' => route('settings.notifications'), 'active' => request()->routeIs('settings.notifications')],
+        ['label' => 'Ruxsatlar', 'href' => route('settings.permissions'), 'active' => request()->routeIs('settings.permissions')],
         ['label' => 'Akkaunt', 'href' => route('settings.account'), 'active' => request()->routeIs('settings.account')],
     ]" />
     @if (session('status'))

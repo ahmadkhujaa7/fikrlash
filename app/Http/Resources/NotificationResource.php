@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Announcement;
 use App\Models\Notification;
 use App\Support\NotificationPresenter;
 use Illuminate\Http\Request;
@@ -24,6 +25,14 @@ class NotificationResource extends JsonResource
                 'name' => $this->actor->name,
                 'username' => $this->actor->username,
                 'avatar_url' => $this->actor->avatarUrl(),
+            ] : null,
+            'announcement' => $this->subject instanceof Announcement ? [
+                'id' => $this->subject->id,
+                'title' => $this->subject->title,
+                'body' => $this->subject->body,
+                'image_url' => $this->subject->imageUrl(),
+                'link_url' => $this->subject->link_url,
+                'link_label' => $this->subject->link_label,
             ] : null,
             'read' => $this->read_at !== null,
             'created_at' => $this->created_at?->toIso8601String(),

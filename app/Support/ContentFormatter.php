@@ -12,6 +12,14 @@ final class ContentFormatter
 {
     private const URL = '(?<url>https?:\/\/[^\s<>"]+)';
 
+    /**
+     * http(s)'siz yozilgan manzil: "sayt.uz", "www.misol.com/sahifa". Faqat ma'lum domen zonalari —
+     * "Node.js" yoki "v2.0" havolaga aylanmaydi; email (info@sayt.uz) ham emas.
+     */
+    public const TLDS = 'uz|com|net|org|ru|io|me|info|biz|edu|gov|dev|app|ai|co|tv|kz|kg|tj|tm|az|tr|de|uk|us|eu|ua|by|xyz|online|site|store|shop|tech|pro|blog|news|club|academy|media|link|live|world|today|space|website|cloud';
+
+    private const DOMAIN = '(?<![\p{L}\p{N}_@.\/:#-])(?<domain>(?i:(?:www\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:'.self::TLDS.'))(?![\p{L}\p{N}_-])(?:\/[^\s<>"]*)?)';
+
     private const MENTION = '(?<![\p{L}\p{N}_@\/])@(?<mention>[A-Za-z0-9_]{3,30})';
 
     private const HASHTAG = '(?<![\p{L}\p{N}_&\/#])#(?<tag>[\p{L}\p{N}_‘’ʻʼ\']{2,50})';
@@ -22,7 +30,7 @@ final class ContentFormatter
     public static function toHtml(string $text, bool $rich = false): string
     {
         $text = preg_replace("/\n{3,}/", "\n\n", str_replace(["\r\n", "\r"], "\n", trim($text))) ?? '';
-        $pattern = '/'.self::URL.'|'.self::MENTION.'|'.self::HASHTAG.'/u';
+        $pattern = '/'.self::URL.'|'.self::DOMAIN.'|'.self::MENTION.'|'.self::HASHTAG.'/u';
 
         $html = '';
         $offset = 0;
@@ -52,6 +60,14 @@ final class ContentFormatter
 
     private static function renderToken(array $match, string $full): string
     {
+        if (($match['domain'][0] ?? null) !== null) {
+            $domain = rtrim($full, '.,;:!?)»”');
+            $tail = substr($full, strlen($domain));
+            $label = mb_strimwidth(preg_replace('#^www\.#i', '', $domain) ?? $domain, 0, 48, '…');
+
+            return '<a href="https://'.e($domain).'" class="link" target="_blank" rel="nofollow ugc noopener noreferrer">'.e($label).'</a>'.e($tail);
+        }
+
         if (($match['url'][0] ?? null) !== null) {
             // Gap oxiridagi tinish belgilarini havoladan chiqaramiz.
             $url = rtrim($full, '.,;:!?)»”');

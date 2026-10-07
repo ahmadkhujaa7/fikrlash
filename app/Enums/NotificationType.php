@@ -13,6 +13,7 @@ enum NotificationType: string implements HasLabel
     case Mentioned = 'mentioned';
     case PostModerated = 'post_moderated';
     case System = 'system';
+    case Announcement = 'announcement';
 
     public function getLabel(): string
     {
@@ -24,6 +25,25 @@ enum NotificationType: string implements HasLabel
             self::Mentioned => 'Sizni eslatdi',
             self::PostModerated => 'Post moderatsiyasi',
             self::System => 'Tizim xabari',
+            self::Announcement => 'E’lon',
+        };
+    }
+
+    /** Foydalanuvchi sozlamalarda o‘chira oladigan turlar (tizim, moderatsiya va e'lonlar doim keladi). */
+    public static function optional(): array
+    {
+        return [self::Followed, self::PostLiked, self::PostCommented, self::CommentReplied, self::Mentioned];
+    }
+
+    public function settingLabel(): string
+    {
+        return match ($this) {
+            self::Followed => 'Yangi obunachilar',
+            self::PostLiked => 'Fikrlarimni yoqtirishganda',
+            self::PostCommented => 'Fikrlarimga izoh qoldirishganda',
+            self::CommentReplied => 'Izohlarimga javob berishganda',
+            self::Mentioned => 'Meni @eslatishganda',
+            default => $this->getLabel(),
         };
     }
 

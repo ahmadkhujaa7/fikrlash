@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\NotificationType;
 use App\Enums\UserStatus;
+use App\Filament\Resources\Announcements\AnnouncementResource;
 use App\Models\Notification as UserNotification;
 use App\Models\User;
 use App\Services\Social\AuditLogger;
@@ -21,9 +22,14 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use UnitEnum;
 
-/** Tizim bildirishnomasi yuborish: barcha faol foydalanuvchilarga yoki bitta foydalanuvchiga. */
+/**
+ * Eski "Bildirishnoma yuborish" sahifasi. Endi uning o‘rnini "E’lonlar" bo‘limi egalladi
+ * (rasm, tahrirlash, o‘chirish va ko‘rishlar statistikasi bilan) — eski havola o‘sha yerga yo‘naltiradi.
+ */
 class BroadcastNotification extends Page
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
     protected static string|UnitEnum|null $navigationGroup = 'Tizim';
@@ -36,7 +42,7 @@ class BroadcastNotification extends Page
 
     public function mount(): void
     {
-        $this->form->fill(['audience' => 'all']);
+        $this->redirect(AnnouncementResource::getUrl('create'));
     }
 
     public function form(Schema $schema): Schema

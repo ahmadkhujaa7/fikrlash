@@ -14,6 +14,126 @@ const coarse = () => window.matchMedia('(pointer: coarse)').matches;
 const pad = (n) => String(n).padStart(2, '0');
 const clock = (s) => `${Math.floor(s / 60)}:${pad(Math.floor(s % 60))}`;
 const BARS = 36;
+const MB = 1024 * 1024;
+
+/** Fayl yuborish (XHR — yuklanish foizini ko‘rsatish uchun). Har doim {status, data} qaytaradi. */
+function xhrPost(url, form, onProgress) {
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRF-TOKEN', csrf());
+        xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+        xhr.onload = () => {
+            let data = {};
+            try {
+                data = JSON.parse(xhr.responseText);
+            } catch {
+                /* JSON emas */
+            }
+            resolve({ status: xhr.status, data });
+        };
+        xhr.onerror = () => resolve({ status: 0, data: {} });
+        xhr.send(form);
+    });
+}
+
+function uploadError(status, data, fallback) {
+    if (status === 0) return 'Internet aloqasini tekshiring.';
+    if (status === 413) return 'Fayl juda katta — kichikroq fayl tanlang.';
+    if (status === 429) return 'Juda tez yuboryapsiz — birozdan keyin.';
+    return data?.message || fallback;
+}
+
+/** "2 ta rasm, video" kabi qisqa tavsif. */
+function mediaLabel(media = []) {
+    const images = media.filter((a) => a.kind === 'image').length;
+    const videos = media.length - images;
+    const part = (n, one, many) => (n ? (n === 1 ? one : `${n} ta ${many}`) : null);
+    return [part(images, 'Rasm', 'rasm'), part(videos, images ? 'video' : 'Video', 'video')].filter(Boolean).join(', ') || 'Media';
+}
+
+/** Rasmni yuborishdan oldin kichraytiradi (uzun tomoni ≤ maxSide, JPEG). Kichik rasmlar o‘zgarmaydi. */
+async function prepareImage(file, maxSide) {
+    let source;
+    try {
+        source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+        source = await new Promise((resolve) => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
+            img.src = url;
+        });
+    }
+    // Brauzer o‘qiy olmaydigan format (masalan HEIC) — o‘zini yuboramiz, server tekshiradi.
+    if (!source) return { blob: file, name: file.name, w: null, h: null };
+
+    const width = source.width || source.naturalWidth;
+    const height = source.height || source.naturalHeight;
+    const scale = Math.min(1, maxSide / Math.max(width, height));
+    const keep = (scale === 1 && file.size <= 1.5 * MB && /^image\/(jpeg|png|webp)$/.test(file.type)) || (file.type === 'image/gif' && file.size <= 8 * MB);
+    if (keep) {
+        source.close?.();
+        return { blob: file, name: file.name, w: width, h: height };
+    }
+    const w = Math.round(width * scale);
+    const h = Math.round(height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; // shaffof PNG — oq fonda
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(source, 0, 0, w, h);
+    source.close?.();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
+    return blob ? { blob, name: `${file.name.replace(/\.[^.]+$/, '') || 'rasm'}.jpg`, w, h } : { blob: file, name: file.name, w, h };
+}
+
+/** Video: davomiyligi, o‘lchami va muqova uchun birinchi kadr (brauzer o‘qiy olsa). */
+function probeVideo(file) {
+    return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        let done = false;
+        const finish = (out) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            video.removeAttribute('src');
+            video.load();
+            URL.revokeObjectURL(url);
+            resolve(out);
+        };
+        const basic = () => ({ duration: Number.isFinite(video.duration) ? video.duration : 0, w: video.videoWidth || null, h: video.videoHeight || null, poster: null });
+        const timer = setTimeout(() => finish(basic()), 8000);
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+            video.currentTime = Math.min(0.5, (Number.isFinite(video.duration) ? video.duration : 1) / 3);
+        };
+        video.onseeked = () => {
+            const { videoWidth: w, videoHeight: h } = video;
+            if (!w || !h) return finish(basic());
+            const scale = Math.min(1, 720 / Math.max(w, h));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(w * scale);
+            canvas.height = Math.round(h * scale);
+            try {
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            } catch {
+                return finish(basic());
+            }
+            canvas.toBlob((poster) => finish({ ...basic(), poster }), 'image/jpeg', 0.8);
+        };
+        video.onerror = () => finish({ duration: 0, w: null, h: null, poster: null });
+        video.src = url;
+    });
+}
 
 /** To‘lqin shaklini kerakli ustunlar soniga keltiradi (bo‘lmasa — id'dan barqaror "tasodifiy" shakl). */
 function resample(values, count, seed = 1) {
@@ -40,16 +160,21 @@ export function registerBadges(Alpine) {
         messages: Number(body.dataset.unreadMessages || 0),
         async refresh() {
             if (!body.dataset.auth) return;
+            const push = window.fkPush?.enabled();
             try {
-                const res = await fetch('/badges', { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-                if (res.ok) Object.assign(this, await res.json());
+                const res = await fetch(push ? '/badges?latest=1' : '/badges', { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                if (!res.ok) return;
+                const { latest, ...counts } = await res.json();
+                Object.assign(this, counts);
+                if (push && latest) window.fkPush.handle(latest);
             } catch {
                 /* jim */
             }
         },
     });
     if (body.dataset.auth) {
-        setInterval(() => !document.hidden && Alpine.store('badges').refresh(), 30000);
+        // Brauzer bildirishnomalari yoqilgan bo‘lsa — sahifa yashirin bo‘lsa ham tekshiradi (brauzer o‘zi siyraklashtiradi).
+        setInterval(() => (!document.hidden || window.fkPush?.enabled()) && Alpine.store('badges').refresh(), 30000);
         document.addEventListener('visibilitychange', () => !document.hidden && Alpine.store('badges').refresh());
     }
     Alpine.data('unreadBadge', (kind = 'notifications') => ({
@@ -130,6 +255,12 @@ export function registerThread(Alpine) {
         let readTimer = null;
         let tmpSeq = 0;
         let lastTypingSent = 0;
+        const objectUrls = new Set();
+        const blobUrl = (blob) => {
+            const url = URL.createObjectURL(blob);
+            objectUrls.add(url);
+            return url;
+        };
 
         const withKey = (m) => ({ ...m, key: `m${m.id}` });
 
@@ -155,6 +286,14 @@ export function registerThread(Alpine) {
             _readSent: 0,
             player: { id: null, progress: 0, time: 0, playing: false },
             rec: { state: 'idle', seconds: 0, live: [], levels: [] },
+            attachOpen: false,
+            pending: [],
+            locating: false,
+            dragging: false,
+
+            get pendingBusy() {
+                return this.pending.some((f) => f.busy);
+            },
 
             init() {
                 document.documentElement.classList.add('chat-lock');
@@ -175,6 +314,7 @@ export function registerThread(Alpine) {
             },
             destroy() {
                 this.stopEverything();
+                objectUrls.forEach((url) => URL.revokeObjectURL(url));
                 document.documentElement.classList.remove('chat-lock');
             },
             stopEverything() {
@@ -234,7 +374,11 @@ export function registerThread(Alpine) {
                 const m = this.editing || this.replyTo;
                 if (!m) return '';
                 if (m.type === 'voice') return `Ovozli xabar · ${clock(m.voice?.duration || 0)}`;
-                return (m.body ?? this.plain(m.html)).replace(/\s+/g, ' ').slice(0, 120);
+                const text = (m.body ?? this.plain(m.html)).replace(/\s+/g, ' ').trim().slice(0, 120);
+                if (m.type === 'media') return text ? `${mediaLabel(m.media)} · ${text}` : mediaLabel(m.media);
+                if (m.type === 'location') return 'Joylashuv';
+                if (m.type === 'post') return text || 'Ulashilgan post';
+                return text;
             },
             plain(html) {
                 const div = document.createElement('div');
@@ -374,9 +518,206 @@ export function registerThread(Alpine) {
                 }
             },
             onPaste(e) {
+                // Nusxalangan rasm (masalan, ekran surati) — biriktiriladi.
+                const files = [...(e.clipboardData?.files ?? [])].filter((f) => /^(image|video)\//.test(f.type));
+                if (files.length && !this.editing) {
+                    e.preventDefault();
+                    this.addFiles(files);
+                    return;
+                }
                 const text = e.clipboardData?.getData('text/plain') ?? '';
                 if (this.draft.length + text.length > this.maxLength) toast(`Xabar ${this.maxLength} belgidan oshmasin.`, 'error');
             },
+
+            /* --- Rasm va video biriktirish --- */
+            pickFiles(e) {
+                const files = [...(e.target.files ?? [])];
+                e.target.value = '';
+                this.attachOpen = false;
+                this.addFiles(files);
+            },
+            onDrop(e) {
+                this.dragging = false;
+                if (this.cannotSend || this.editing) return;
+                this.addFiles([...(e.dataTransfer?.files ?? [])]);
+            },
+            addFiles(files) {
+                const room = cfg.media.maxFiles - this.pending.length;
+                if (!files.length) return;
+                if (room <= 0) {
+                    toast(`Bir xabarda ko‘pi bilan ${cfg.media.maxFiles} ta fayl.`, 'error');
+                    return;
+                }
+                if (files.length > room) toast(`Bir xabarda ko‘pi bilan ${cfg.media.maxFiles} ta fayl — ortiqchasi olinmadi.`, 'error');
+
+                for (const file of files.slice(0, room)) {
+                    const kind = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name) ? 'image' : null;
+                    if (!kind) {
+                        toast(`"${file.name}" — faqat rasm yoki video yuborish mumkin.`, 'error');
+                        continue;
+                    }
+                    const limit = kind === 'video' ? cfg.media.videoMaxBytes : cfg.media.imageMaxBytes;
+                    if (file.size > limit) {
+                        toast(`"${file.name}" juda katta — ko‘pi bilan ${Math.floor(limit / MB)} MB.`, 'error');
+                        continue;
+                    }
+                    const item = { key: `f${++tmpSeq}`, kind, name: file.name, blob: file, thumb: '', poster: null, duration: 0, w: null, h: null, busy: true };
+                    this.pending.push(item);
+                    this.prepare(item.key, file, kind);
+                }
+                this.$nextTick(() => this.$refs.input?.focus({ preventScroll: true }));
+            },
+            async prepare(key, file, kind) {
+                const patch = {};
+                if (kind === 'image') {
+                    const out = await prepareImage(file, cfg.media.imageMaxWidth);
+                    Object.assign(patch, out, { thumb: blobUrl(out.blob) });
+                } else {
+                    const out = await probeVideo(file);
+                    if (out.duration && out.duration > cfg.media.videoMaxSeconds) {
+                        toast(`Video ${Math.round(cfg.media.videoMaxSeconds / 60)} daqiqadan uzun bo‘lmasin.`, 'error');
+                        this.pending = this.pending.filter((f) => f.key !== key);
+                        return;
+                    }
+                    Object.assign(patch, { duration: Math.round(out.duration || 0), w: out.w, h: out.h, poster: out.poster, thumb: out.poster ? blobUrl(out.poster) : '' });
+                }
+                const item = this.pending.find((f) => f.key === key);
+                if (item) Object.assign(item, patch, { busy: false });
+            },
+            removePending(i) {
+                const [item] = this.pending.splice(i, 1);
+                if (item?.thumb) {
+                    URL.revokeObjectURL(item.thumb);
+                    objectUrls.delete(item.thumb);
+                }
+            },
+            sendMedia(text) {
+                const files = this.pending.splice(0);
+                const total = files.reduce((sum, f) => sum + (f.blob?.size || 0) + (f.poster?.size || 0), 0);
+                if (total > cfg.media.postMaxBytes) {
+                    this.pending = files;
+                    toast(`Fayllar jami ${Math.floor(cfg.media.postMaxBytes / MB)} MB dan oshmasin — bir nechta xabarga bo‘lib yuboring.`, 'error');
+                    return;
+                }
+                const temp = this.pushTemp({
+                    type: 'media',
+                    html: text ? escapeHtml(text).replace(/\n/g, '<br>') : null,
+                    body: text || null,
+                    media: files.map((f) => ({ key: f.key, kind: f.kind, thumb: f.thumb, url: null, poster: null, w: f.w, h: f.h, duration: f.duration })),
+                    uploading: true,
+                    progress: 0,
+                    files,
+                });
+                const replyId = this.replyTo?.id;
+                this.replyTo = null;
+                this.resetInput();
+                this.uploadMedia(temp, files, text, replyId);
+            },
+            async uploadMedia(temp, files, text, replyId) {
+                const form = new FormData();
+                if (text) form.append('body', text);
+                if (replyId) form.append('reply_to_id', String(replyId));
+                files.forEach((f, i) => {
+                    form.append(`files[${i}]`, f.blob, f.name);
+                    if (f.poster) form.append(`posters[${i}]`, f.poster, 'poster.jpg');
+                    if (f.duration) form.append(`durations[${i}]`, String(f.duration));
+                    if (f.w && f.h) form.append(`dims[${i}]`, `${f.w}x${f.h}`);
+                });
+                const { status, data } = await xhrPost(cfg.urls.send, form, (p) => {
+                    const m = this.messages.find((x) => x.key === temp.key);
+                    if (m) m.progress = p;
+                });
+                if (status === 201) {
+                    // Yuklangan rasmlar qayta yuklanmasin — mahalliy nusxasi ko‘rinib turadi.
+                    data.message.media = (data.message.media ?? []).map((a, i) => ({ ...a, thumb: files[i]?.thumb || null }));
+                    this.settle(temp, data.message);
+                    return;
+                }
+                const m = this.messages.find((x) => x.key === temp.key);
+                if (m) Object.assign(m, { pending: false, uploading: false, failed: true, retryBody: text, retryReply: replyId });
+                toast(uploadError(status, data, 'Rasm/video yuborilmadi.'), 'error');
+            },
+
+            /* --- Joylashuv --- */
+            async shareLocation() {
+                this.attachOpen = false;
+                if (!window.isSecureContext) return toast('Joylashuv uchun sayt HTTPS orqali ochilishi kerak.', 'error');
+                if (!navigator.geolocation) return toast('Brauzeringiz joylashuvni aniqlay olmaydi.', 'error');
+                const ok = await window.confirmAction({
+                    title: 'Joylashuv yuborilsinmi?',
+                    text: `${cfg.peerName ?? 'Suhbatdoshingiz'} hozirgi joylashuvingizni xaritada ko‘radi.`,
+                    ok: 'Yuborish',
+                    tone: 'primary',
+                });
+                if (!ok) return;
+                this.locating = true;
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        this.locating = false;
+                        const round = (n) => Math.round(n * 1e6) / 1e6;
+                        this.sendLocation({ lat: round(pos.coords.latitude), lng: round(pos.coords.longitude), acc: Math.round(pos.coords.accuracy || 0) });
+                    },
+                    (err) => {
+                        this.locating = false;
+                        toast(
+                            err.code === 1
+                                ? 'Joylashuvga ruxsat berilmadi. Ruxsatni brauzer sozlamalaridan yoki "Sozlamalar → Ruxsatlar" bo‘limidan yoqing.'
+                                : err.code === 3
+                                  ? 'Joylashuvni aniqlash uzoq cho‘zildi — qayta urinib ko‘ring.'
+                                  : 'Joylashuvni aniqlab bo‘lmadi. GPS yoqilganini tekshiring.',
+                            'error',
+                        );
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+                );
+            },
+            async sendLocation(location, existing = null) {
+                const temp = existing ?? this.pushTemp({ type: 'location', location });
+                const replyId = existing ? existing.retryReply : this.replyTo?.id;
+                if (!existing) this.replyTo = null;
+                try {
+                    const data = await api('POST', cfg.urls.send, { ...location, reply_to_id: replyId ?? null });
+                    this.settle(temp, data.message);
+                } catch (err) {
+                    const m = this.messages.find((x) => x.key === temp.key);
+                    if (m) Object.assign(m, { pending: false, failed: true, retryReply: replyId });
+                    toast(err.message, 'error');
+                }
+            },
+            /** OpenStreetMap parchalari: nuqta markazda turadigan 260×150 kesim. */
+            mapTiles(loc) {
+                const z = 15;
+                const W = 260;
+                const H = 150;
+                const T = 256;
+                const n = 2 ** z;
+                const lat = (Math.max(-85, Math.min(85, loc.lat)) * Math.PI) / 180;
+                const x = ((loc.lng + 180) / 360) * n * T;
+                const y = ((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2) * n * T;
+                const left = x - W / 2;
+                const top = y - H / 2;
+                const tiles = [];
+                for (let tx = Math.floor(left / T); tx <= Math.floor((left + W) / T); tx++) {
+                    for (let ty = Math.floor(top / T); ty <= Math.floor((top + H) / T); ty++) {
+                        tiles.push({ key: `${tx}_${ty}`, src: `https://tile.openstreetmap.org/${z}/${((tx % n) + n) % n}/${ty}.png`, left: Math.round(tx * T - left), top: Math.round(ty * T - top) });
+                    }
+                }
+                return tiles;
+            },
+            mapLink(loc) {
+                return `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+            },
+            yandexLink(loc) {
+                return `https://yandex.uz/maps/?pt=${loc.lng},${loc.lat}&z=16&l=map`;
+            },
+
+            /** Albomni to‘liq ekranda ko‘rish (rasm — kattalashtirish, video — ijro). */
+            openMedia(m, index) {
+                const caption = this.plain(m.html).trim();
+                const items = (m.media ?? []).map((a) => ({ type: a.kind, src: a.url || a.thumb, poster: a.poster || a.thumb, caption }));
+                window.openLightbox?.(items, index);
+            },
+            mediaLabel,
             resetInput() {
                 this.draft = '';
                 this.$nextTick(() => {
@@ -407,10 +748,10 @@ export function registerThread(Alpine) {
             },
             async submit() {
                 const text = this.draft.trim();
-                if (!text) return;
 
                 if (this.editing) {
                     const target = this.editing;
+                    if (!text && target.type === 'text') return;
                     this.editing = null;
                     this.resetInput();
                     if (text === (target.body ?? '').trim()) return;
@@ -422,6 +763,12 @@ export function registerThread(Alpine) {
                     }
                     return;
                 }
+
+                if (this.pending.length) {
+                    if (!this.pendingBusy) this.sendMedia(text);
+                    return;
+                }
+                if (!text) return;
 
                 const temp = this.pushTemp({ type: 'text', html: escapeHtml(text).replace(/\n/g, '<br>'), body: text });
                 const replyId = this.replyTo?.id;
@@ -471,6 +818,10 @@ export function registerThread(Alpine) {
             retry(m) {
                 Object.assign(m, { pending: true, failed: false });
                 if (m.type === 'voice') this.uploadVoice(m, m.blob, m.voice.duration, m.levels, m.retryReply);
+                else if (m.type === 'media') {
+                    Object.assign(m, { uploading: true, progress: 0 });
+                    this.uploadMedia(m, m.files, m.retryBody, m.retryReply);
+                } else if (m.type === 'location') this.sendLocation(m.location, m);
                 else this.sendText(m, m.retryBody, m.retryReply);
             },
 
@@ -703,36 +1054,18 @@ export function registerThread(Alpine) {
                 form.append('waveform', JSON.stringify(waveform));
                 if (replyId) form.append('reply_to_id', String(replyId));
 
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', cfg.urls.send);
-                xhr.setRequestHeader('Accept', 'application/json');
-                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                xhr.setRequestHeader('X-CSRF-TOKEN', csrf());
-                xhr.upload.onprogress = (e) => {
+                xhrPost(cfg.urls.send, form, (p) => {
                     const m = this.messages.find((x) => x.key === temp.key);
-                    if (m && e.lengthComputable) m.progress = e.loaded / e.total;
-                };
-                xhr.onload = () => {
-                    let data = {};
-                    try {
-                        data = JSON.parse(xhr.responseText);
-                    } catch {
-                        /* JSON emas */
-                    }
-                    if (xhr.status === 201) {
+                    if (m) m.progress = p;
+                }).then(({ status, data }) => {
+                    if (status === 201) {
                         this.settle(temp, data.message);
                         return;
                     }
                     const m = this.messages.find((x) => x.key === temp.key);
                     if (m) Object.assign(m, { pending: false, uploading: false, failed: true, retryReply: replyId });
-                    toast(data.message || (xhr.status === 429 ? 'Juda tez yuboryapsiz — birozdan keyin.' : 'Ovozli xabar yuborilmadi.'), 'error');
-                };
-                xhr.onerror = () => {
-                    const m = this.messages.find((x) => x.key === temp.key);
-                    if (m) Object.assign(m, { pending: false, uploading: false, failed: true, retryReply: replyId });
-                    toast('Internet aloqasini tekshiring.', 'error');
-                };
-                xhr.send(form);
+                    toast(uploadError(status, data, 'Ovozli xabar yuborilmadi.'), 'error');
+                });
             },
         };
     });

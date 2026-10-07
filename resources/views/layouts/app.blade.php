@@ -154,6 +154,7 @@
 @endunless
 
 @include('partials.report-modal')
+@include('partials.overlays')
 @if (\App\Services\Security\ImpersonationService::active() && $me)
     {{-- Admin foydalanuvchi nomidan ko‘ryapti — doim ko‘rinib turadi --}}
     <form method="POST" action="{{ route('impersonate.stop') }}"
