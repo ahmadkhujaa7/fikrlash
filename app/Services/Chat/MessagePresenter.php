@@ -36,7 +36,7 @@ class MessagePresenter
             'html' => ! $removed && ! $message->isVoice() && $message->body !== null ? ContentFormatter::toHtml((string) $message->body, rich: true) : null,
             'body' => $mine && ! $removed && ! $message->isVoice() ? $message->body : null,
             'media' => ! $removed && $message->type === Message::TYPE_MEDIA ? $this->media($message) : null,
-            'location' => ! $removed && $message->type === Message::TYPE_LOCATION ? $message->meta : null,
+            'location' => ! $removed && $message->type === Message::TYPE_LOCATION ? $this->location($message) : null,
             'post' => ! $removed && $message->type === Message::TYPE_POST ? $this->post($message, $viewer) : null,
             'voice' => ! $removed && $message->isVoice() ? [
                 'url' => route('messages.voice', [$message->conversation_id, $message->id]),
@@ -77,6 +77,21 @@ class MessagePresenter
                 'duration' => $a->duration,
             ];
         })->values()->all();
+    }
+
+    /** Joylashuv — kalitlar tartibi barqaror (MySQL JSON ustuni kalitlarni o‘zicha tartiblaydi). */
+    private function location(Message $message): ?array
+    {
+        $meta = $message->meta ?? [];
+        if (! isset($meta['lat'], $meta['lng'])) {
+            return null;
+        }
+
+        return [
+            'lat' => (float) $meta['lat'],
+            'lng' => (float) $meta['lng'],
+            'acc' => isset($meta['acc']) ? (int) $meta['acc'] : null,
+        ];
     }
 
     /** Ulashilgan post: suhbatdosh uni ko‘ra olmasa (yopiq yoki o‘chirilgan) — "mavjud emas". */
