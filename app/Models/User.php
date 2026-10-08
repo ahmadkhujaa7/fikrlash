@@ -57,6 +57,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return [
             'phone_verified_at' => 'datetime',
             'verified_at' => 'datetime',
+            'monetized_at' => 'datetime',
             'admin_note' => 'encrypted',
             'last_login_at' => 'datetime',
             'last_active_at' => 'datetime',
@@ -163,6 +164,27 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
 
         return ! in_array($type->value, $this->notification_settings['muted'] ?? [], true);
+    }
+
+    /** Admin "Muallif" deb tasdiqlagan — maqolalari daromad keltiradi, profilda muallif belgisi. */
+    public function isMonetized(): bool
+    {
+        return $this->monetized_at !== null;
+    }
+
+    public function authorApplications(): HasMany
+    {
+        return $this->hasMany(AuthorApplication::class);
+    }
+
+    public function authorEarnings(): HasMany
+    {
+        return $this->hasMany(AuthorEarning::class);
+    }
+
+    public function authorPayouts(): HasMany
+    {
+        return $this->hasMany(AuthorPayout::class);
     }
 
     public function isVerified(): bool

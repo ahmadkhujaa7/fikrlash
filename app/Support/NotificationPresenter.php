@@ -23,6 +23,7 @@ final class NotificationPresenter
             $subject instanceof Post && ! $subject->trashed() => route('posts.show', $subject),
             $subject instanceof Comment && ! $subject->trashed() => route('posts.show', $subject->post_id).'#comment-'.$subject->id,
             $subject instanceof User => route('profile.show', $subject->username),
+            $n->type === NotificationType::Monetization => route('monetization.index'),
             default => null,
         };
 
@@ -39,6 +40,7 @@ final class NotificationPresenter
             },
             NotificationType::System => (string) ($data['message'] ?? 'Tizim xabari'),
             NotificationType::Announcement => $subject instanceof Announcement ? $subject->title : 'E’lon',
+            NotificationType::Monetization => (string) ($data['message'] ?? 'Monetizatsiya'),
         };
 
         $excerpt = $data['excerpt'] ?? match (true) {

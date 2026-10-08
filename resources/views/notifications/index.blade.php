@@ -13,6 +13,7 @@
         T::PostModerated->value => ['shield', 'text-ink-soft bg-sunken'],
         T::System->value => ['bulb', 'text-ink-soft bg-sunken'],
         T::Announcement->value => ['megaphone', 'text-lapis bg-lapis-soft'],
+        T::Monetization->value => ['wallet', 'text-amber bg-amber-soft'],
     ];
 @endphp
 

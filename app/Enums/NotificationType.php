@@ -14,6 +14,7 @@ enum NotificationType: string implements HasLabel
     case PostModerated = 'post_moderated';
     case System = 'system';
     case Announcement = 'announcement';
+    case Monetization = 'monetization';
 
     public function getLabel(): string
     {
@@ -26,6 +27,7 @@ enum NotificationType: string implements HasLabel
             self::PostModerated => 'Post moderatsiyasi',
             self::System => 'Tizim xabari',
             self::Announcement => 'E’lon',
+            self::Monetization => 'Monetizatsiya',
         };
     }
 

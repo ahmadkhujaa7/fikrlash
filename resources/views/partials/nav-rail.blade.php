@@ -7,6 +7,7 @@
         ['Bildirishnomalar', 'bell', route('notifications.index'), request()->routeIs('notifications.*')],
         ['Saqlanganlar', 'bookmark', route('saved.index'), request()->routeIs('saved.*')],
         ['Profil', 'user', route('profile.show', $me->username), request()->is('@'.$me->username.'*')],
+        ...($me->isMonetized() ? [['Muallif paneli', 'wallet', route('monetization.index'), request()->routeIs('monetization.*')]] : []),
         ['Sozlamalar', 'settings', route('settings.profile'), request()->routeIs('settings.*')],
     ] : [
         ['Lenta', 'home', route('home'), request()->routeIs('home')],

@@ -13,6 +13,7 @@ use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MonetizationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -120,6 +121,14 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    // Monetizatsiya: talablar va so‘rov, muallif paneli, pul yechish.
+    Route::prefix('monetization')->name('monetization.')->controller(MonetizationController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/apply', 'apply')->middleware('throttle:5,1')->name('apply');
+        Route::post('/payouts', 'payout')->middleware('throttle:10,1')->name('payouts.store');
+        Route::delete('/payouts/{payout}', 'cancelPayout')->whereNumber('payout')->name('payouts.cancel');
+    });
+
     Route::post('/devices', [DeviceController::class, 'store'])->middleware('throttle:20,1')->name('devices.store');
     Route::delete('/devices', [DeviceController::class, 'destroy'])->name('devices.destroy');
     Route::post('/announcements/{announcement}/open', [AnnouncementController::class, 'open'])->whereNumber('announcement')->name('announcements.open');

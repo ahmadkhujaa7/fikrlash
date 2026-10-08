@@ -3,6 +3,8 @@
   Faqat admin beradi; foydalanuvchi ismiga ✓ yozib soxtalashtira olmaydi (ism validatsiyasi).
 --}}
 @props(['user', 'size' => 'sm'])
+{{-- Muallif belgisi (monetizatsiya) — tasdiqlangan belgisidan oldin. --}}
+<x-author-badge :user="$user" :size="$size" {{ $attributes->only('class') }} />
 @if ($user?->isVerified())
     @php $px = ['xs' => 'size-3.5', 'sm' => 'size-4', 'md' => 'size-[18px]', 'lg' => 'size-6'][$size] ?? 'size-4'; @endphp
     <svg {{ $attributes->merge(['class' => "$px inline-block shrink-0 align-[-0.125em] text-lapis"]) }} viewBox="0 0 24 24" role="img" aria-label="Tasdiqlangan akkaunt">

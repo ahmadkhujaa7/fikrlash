@@ -22,6 +22,7 @@
                         <x-slot:trigger class="border border-line-strong !p-2"><x-ico name="dots" /></x-slot:trigger>
                         <x-dropdown-item icon="bookmark" :href="route('saved.index')">Saqlanganlar</x-dropdown-item>
                         <x-dropdown-item icon="document" :href="route('posts.drafts')">Qoralamalar</x-dropdown-item>
+                        <x-dropdown-item icon="wallet" :href="route('monetization.index')">{{ $user->isMonetized() ? 'Muallif paneli' : 'Monetizatsiya' }}</x-dropdown-item>
                         <x-dropdown-item icon="settings" :href="route('settings.profile')">Sozlamalar</x-dropdown-item>
                         @if (auth()->user()->isAdmin())
                             <x-dropdown-item icon="shield" href="/admin">Admin panel</x-dropdown-item>
@@ -57,9 +58,16 @@
             </div>
         </div>
 
-        <h1 class="display mt-5 !text-[2.25rem] !leading-[1.1]">{{ $user->name }}@if ($user->isVerified())<x-verified :user="$user" size="lg" class="ml-2 !align-[0.05em]" />@endif</h1>
-        @if ($user->isVerified())
-            <p class="mt-1.5 inline-flex items-center gap-1.5 text-[13px] text-lapis">Tasdiqlangan akkaunt</p>
+        <h1 class="display mt-5 !text-[2.25rem] !leading-[1.1]">{{ $user->name }}@if ($user->isVerified() || $user->isMonetized())<x-verified :user="$user" size="lg" class="ml-2 !align-[0.05em]" />@endif</h1>
+        @if ($user->isVerified() || $user->isMonetized())
+            <p class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+                @if ($user->isMonetized())
+                    <span class="inline-flex items-center gap-1 font-medium text-[#B26E12] dark:text-[#F0B25A]"><x-author-badge :user="$user" size="xs" /> Muallif</span>
+                @endif
+                @if ($user->isVerified())
+                    <span class="text-lapis">Tasdiqlangan akkaunt</span>
+                @endif
+            </p>
         @endif
         <p class="mt-1 text-[15px] text-muted">{{ '@'.$user->username }}</p>
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('views:flush')->everyMinute()->withoutOverlapping();
 Schedule::command('posts:refresh-scores')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('monetization:accrue')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('users:lift-suspensions')->everyTenMinutes();
 Schedule::command('ai:retry-pending')->hourly()->withoutOverlapping();
 Schedule::command('fikrlash:reconcile-counters')->dailyAt('03:10')->withoutOverlapping();

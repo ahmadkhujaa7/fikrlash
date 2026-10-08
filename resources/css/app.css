@@ -579,6 +579,15 @@
         background-image: linear-gradient(160deg, var(--brand-a), var(--brand-b));
         box-shadow: 0 8px 18px -10px rgb(48 73 209 / 0.8);
     }
+    /* Muallif paneli grafigi — ustunlar (yorug‘/tungi rejim uchun tekshirilgan rang) */
+    .chart-bar {
+        background-color: #3049d1;
+    }
+    @media (prefers-color-scheme: dark) {
+        .chart-bar {
+            background-color: #7288f5;
+        }
+    }
     /* Yoqish/o‘chirish tugmasi (checkbox) */
     .switch {
         @apply relative h-7 w-12 shrink-0 cursor-pointer appearance-none rounded-full bg-line-strong transition-colors duration-200 checked:bg-lapis focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lapis disabled:cursor-not-allowed disabled:opacity-50;

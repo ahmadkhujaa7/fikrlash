@@ -64,6 +64,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Moderatsiya'),
                 NavigationGroup::make('Foydalanuvchilar'),
                 NavigationGroup::make('Kuzatuv')->icon(Heroicon::OutlinedEye),
+                NavigationGroup::make('Monetizatsiya'),
                 NavigationGroup::make('AI'),
                 NavigationGroup::make('Tizim'),
             ])
