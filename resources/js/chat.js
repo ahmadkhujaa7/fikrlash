@@ -6,6 +6,7 @@
  * suhbatdosh qayergacha o‘qigani, "yozmoqda" va onlayn holati.
  */
 import { api } from './api';
+import { explainGeoError, explainMicError, formatAccuracy, locate, policyBlocks } from './hardware';
 
 const toast = (message, type) => window.toast?.(message, type);
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -15,6 +16,40 @@ const pad = (n) => String(n).padStart(2, '0');
 const clock = (s) => `${Math.floor(s / 60)}:${pad(Math.floor(s % 60))}`;
 const BARS = 36;
 const MB = 1024 * 1024;
+
+/*
+ * Ovoz yozish formati. Hamma qurilmada ijro bo‘lishi uchun avval MP4/AAC, keyin WebM/Opus.
+ * Ba'zi brauzerlar MP4'ni "qo‘llayman" deydi-yu, yozolmaydi — bunday format eslab qolinadi
+ * va keyingi safar o‘tkazib yuboriladi (yozish "osilib qolmaydi").
+ */
+const RECORDER_TYPES = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+const BAD_TYPES_KEY = 'fk:rec-bad-types';
+const badTypes = () => {
+    try {
+        return JSON.parse(localStorage.getItem(BAD_TYPES_KEY) || '[]');
+    } catch {
+        return [];
+    }
+};
+const markBadType = (type) => {
+    if (!type) return;
+    try {
+        localStorage.setItem(BAD_TYPES_KEY, JSON.stringify([...new Set([...badTypes(), type])]));
+    } catch {
+        /* xususiy rejim */
+    }
+};
+function createRecorder(stream) {
+    const skip = badTypes();
+    for (const type of RECORDER_TYPES.filter((t) => !skip.includes(t) && MediaRecorder.isTypeSupported?.(t))) {
+        try {
+            return new MediaRecorder(stream, { mimeType: type, audioBitsPerSecond: 48000 });
+        } catch {
+            markBadType(type);
+        }
+    }
+    return new MediaRecorder(stream); // brauzer o‘zi tanlagan format
+}
 
 /** Fayl yuborish (XHR — yuklanish foizini ko‘rsatish uchun). Har doim {status, data} qaytaradi. */
 function xhrPost(url, form, onProgress) {
@@ -641,8 +676,10 @@ export function registerThread(Alpine) {
             /* --- Joylashuv --- */
             async shareLocation() {
                 this.attachOpen = false;
-                if (!window.isSecureContext) return toast('Joylashuv uchun sayt HTTPS orqali ochilishi kerak.', 'error');
-                if (!navigator.geolocation) return toast('Brauzeringiz joylashuvni aniqlay olmaydi.', 'error');
+                if (!window.isSecureContext || !navigator.geolocation || policyBlocks('geolocation')) {
+                    explainGeoError(null);
+                    return;
+                }
                 const ok = await window.confirmAction({
                     title: 'Joylashuv yuborilsinmi?',
                     text: `${cfg.peerName ?? 'Suhbatdoshingiz'} hozirgi joylashuvingizni xaritada ko‘radi.`,
@@ -650,27 +687,33 @@ export function registerThread(Alpine) {
                     tone: 'primary',
                 });
                 if (!ok) return;
+
                 this.locating = true;
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        this.locating = false;
-                        const round = (n) => Math.round(n * 1e6) / 1e6;
-                        this.sendLocation({ lat: round(pos.coords.latitude), lng: round(pos.coords.longitude), acc: Math.round(pos.coords.accuracy || 0) });
-                    },
-                    (err) => {
-                        this.locating = false;
-                        toast(
-                            err.code === 1
-                                ? 'Joylashuvga ruxsat berilmadi. Ruxsatni brauzer sozlamalaridan yoki "Sozlamalar → Ruxsatlar" bo‘limidan yoqing.'
-                                : err.code === 3
-                                  ? 'Joylashuvni aniqlash uzoq cho‘zildi — qayta urinib ko‘ring.'
-                                  : 'Joylashuvni aniqlab bo‘lmadi. GPS yoqilganini tekshiring.',
-                            'error',
-                        );
-                    },
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-                );
+                let pos;
+                try {
+                    pos = await locate(); // avval GPS, bo‘lmasa Wi‑Fi/tarmoq bo‘yicha
+                } catch (err) {
+                    explainGeoError(err);
+                    return;
+                } finally {
+                    this.locating = false;
+                }
+
+                const round = (n) => Math.round(n * 1e6) / 1e6;
+                const acc = Math.round(pos.coords.accuracy || 0);
+                // Kompyuterda GPS yo‘q — joylashuv taxminiy bo‘lishi mumkin; foydalanuvchi bilsin.
+                if (acc > 3000) {
+                    const go = await window.confirmAction({
+                        title: 'Joylashuv taxminiy',
+                        text: `Qurilma joylashuvingizni faqat taxminan aniqladi (${formatAccuracy(acc)}). Telefonda GPS, kompyuterda Wi‑Fi yoqilsa aniqroq bo‘ladi. Shunday yuborilsinmi?`,
+                        ok: 'Yuborish',
+                        tone: 'primary',
+                    });
+                    if (!go) return;
+                }
+                this.sendLocation({ lat: round(pos.coords.latitude), lng: round(pos.coords.longitude), acc });
             },
+            formatAccuracy,
             async sendLocation(location, existing = null) {
                 const temp = existing ?? this.pushTemp({ type: 'location', location });
                 const replyId = existing ? existing.retryReply : this.replyTo?.id;
@@ -953,8 +996,8 @@ export function registerThread(Alpine) {
             /* --- Ovoz yozish --- */
             async startRecording() {
                 if (this.rec.state !== 'idle') return;
-                if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-                    toast(window.isSecureContext ? 'Brauzeringiz ovoz yozishni qo‘llab-quvvatlamaydi.' : 'Ovoz yozish uchun sayt HTTPS orqali ochilishi kerak.', 'error');
+                if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder || policyBlocks('microphone')) {
+                    explainMicError(null);
                     return;
                 }
                 this.stopAudio();
@@ -962,26 +1005,53 @@ export function registerThread(Alpine) {
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
                 } catch (err) {
-                    this.rec.state = 'idle';
-                    toast(err?.name === 'NotAllowedError' ? 'Mikrofonga ruxsat berilmadi. Brauzer sozlamalaridan ruxsat bering.' : 'Mikrofon topilmadi.', 'error');
+                    this.cleanupRecorder();
+                    this.rec = { state: 'idle', seconds: 0, live: [], levels: [] };
+                    explainMicError(err);
                     return;
                 }
 
-                // Hamma qurilmada ijro bo‘ladigan formatni tanlaymiz: avval MP4/AAC, keyin WebM/Opus.
-                const type = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find((t) => MediaRecorder.isTypeSupported?.(t));
                 const chunks = [];
-                recorder = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined);
+                let type = '';
+                const fail = (message, err) => {
+                    markBadType(type);
+                    this.cleanupRecorder();
+                    this.rec = { state: 'idle', seconds: 0, live: [], levels: [] };
+                    if (err) explainMicError(err);
+                    else toast(message, 'error');
+                };
+                try {
+                    recorder = createRecorder(stream);
+                    type = recorder.mimeType || '';
+                } catch (err) {
+                    fail('', err);
+                    return;
+                }
                 recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+                recorder.onerror = () => {
+                    // Format ishlamadi — keyingi safar boshqasi tanlanadi.
+                    this.rec.state = 'cancelled';
+                    try {
+                        recorder.stop();
+                    } catch {
+                        /* allaqachon to‘xtagan */
+                    }
+                    fail('Ovoz yozishda xato bo‘ldi — yana bir marta urinib ko‘ring.');
+                };
                 recorder.onstop = () => {
                     const shouldSend = this.rec.state === 'sending';
                     const seconds = Math.max(1, Math.round(this.rec.seconds));
                     const levels = this.rec.levels.slice();
                     this.cleanupRecorder();
-                    if (shouldSend && chunks.length) {
-                        const blob = new Blob(chunks, { type: recorder?.mimeType || type || 'audio/webm' });
-                        this.sendVoice(blob, seconds, levels);
-                    }
                     this.rec = { state: 'idle', seconds: 0, live: [], levels: [] };
+                    if (!shouldSend) return;
+                    if (!chunks.length) {
+                        markBadType(type);
+                        toast('Ovoz yozilmadi — yana bir marta urinib ko‘ring.', 'error');
+                        return;
+                    }
+                    const blob = new Blob(chunks, { type: recorder?.mimeType || type || chunks[0]?.type || 'audio/webm' });
+                    this.sendVoice(blob, seconds, levels);
                 };
 
                 // Ovoz balandligi: jonli ustunlar va keyin to‘lqin shakli uchun.
@@ -1003,12 +1073,17 @@ export function registerThread(Alpine) {
                     /* to‘lqin shaklisiz ham ishlaydi */
                 }
 
+                try {
+                    recorder.start(250);
+                } catch (err) {
+                    fail('', err);
+                    return;
+                }
                 const started = performance.now();
                 clockTimer = setInterval(() => {
                     this.rec.seconds = (performance.now() - started) / 1000;
                     if (this.rec.seconds >= cfg.maxVoice) this.finishRecording();
                 }, 200);
-                recorder.start(250);
                 this.rec.state = 'recording';
                 navigator.vibrate?.(10);
             },

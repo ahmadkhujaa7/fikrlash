@@ -178,9 +178,10 @@ export function registerUi(Alpine) {
         ok: 'Tasdiqlash',
         tone: 'danger',
         _resolve: null,
-        ask({ title, text = '', ok = 'Tasdiqlash', tone = 'danger' } = {}) {
+        cancel: true,
+        ask({ title, text = '', ok = 'Tasdiqlash', tone = 'danger', cancel = true } = {}) {
             this._resolve?.(false);
-            Object.assign(this, { title, text, ok, tone, open: true });
+            Object.assign(this, { title, text, ok, tone, cancel, open: true });
             return new Promise((resolve) => (this._resolve = resolve));
         },
         answer(value) {

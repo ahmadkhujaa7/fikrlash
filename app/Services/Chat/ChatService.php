@@ -158,7 +158,7 @@ class ChatService
                         Message::TYPE_LOCATION => [
                             'lat' => round((float) $location['lat'], 6),
                             'lng' => round((float) $location['lng'], 6),
-                            'acc' => isset($location['acc']) ? (int) round((float) $location['acc']) : null,
+                            'acc' => isset($location['acc']) ? (int) min(20_000_000, round((float) $location['acc'])) : null,
                         ],
                         default => null,
                     },
