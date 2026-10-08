@@ -54,9 +54,9 @@
          x-show="$store.confirm.open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-6 opacity-0 sm:translate-y-2"
          x-effect="$store.confirm.open && $nextTick(() => $refs.ok.focus())">
         <h2 class="font-serif text-[1.45rem] font-medium leading-snug tracking-[-0.01em]" x-text="$store.confirm.title"></h2>
-        <p x-show="$store.confirm.text" class="mt-2 text-[14.5px] leading-relaxed text-ink-soft" x-text="$store.confirm.text"></p>
+        <p x-show="$store.confirm.text" class="mt-2 whitespace-pre-line text-[14.5px] leading-relaxed text-ink-soft" x-text="$store.confirm.text"></p>
         <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" class="btn btn-secondary" @click="$store.confirm.answer(false)">Bekor qilish</button>
+            <button type="button" x-show="$store.confirm.cancel" class="btn btn-secondary" @click="$store.confirm.answer(false)">Bekor qilish</button>
             <button type="button" x-ref="ok" class="btn" :class="$store.confirm.tone === 'danger' ? 'btn-danger' : 'btn-primary'" @click="$store.confirm.answer(true)" x-text="$store.confirm.ok"></button>
         </div>
     </div>

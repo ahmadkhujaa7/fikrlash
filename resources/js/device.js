@@ -6,6 +6,7 @@
  * bo‘lib chiqadi. Android'da ko‘rsatish uchun Service Worker kerak (/sw.js — faqat bosilganda sahifani ochadi).
  */
 import { api } from './api';
+import { explainGeoError, explainMicError, locate } from './hardware';
 
 const toast = (message, type) => window.toast?.(message, type);
 const PUSH_KEY = 'fk:push';
@@ -150,24 +151,21 @@ async function requestPermission(name) {
         return;
     }
     if (name === 'geolocation') {
-        await new Promise((resolve) =>
-            navigator.geolocation.getCurrentPosition(
-                () => resolve(true),
-                (err) => {
-                    if (err.code === 1) toast('Joylashuvga ruxsat berilmadi.', 'error');
-                    resolve(false);
-                },
-                { timeout: 15000 },
-            ),
-        );
+        try {
+            await locate();
+            toast('Joylashuv ishlayapti.', 'success');
+        } catch (err) {
+            explainGeoError(err);
+        }
         return;
     }
     try {
         const stream = await navigator.mediaDevices.getUserMedia(name === 'camera' ? { video: true } : { audio: true });
         stream.getTracks().forEach((t) => t.stop());
-        toast(name === 'camera' ? 'Kameraga ruxsat berildi.' : 'Mikrofonga ruxsat berildi.', 'success');
+        toast(name === 'camera' ? 'Kamera ishlayapti.' : 'Mikrofon ishlayapti.', 'success');
     } catch (err) {
-        toast(err?.name === 'NotAllowedError' ? 'Ruxsat berilmadi.' : name === 'camera' ? 'Kamera topilmadi.' : 'Mikrofon topilmadi.', 'error');
+        if (name === 'microphone') explainMicError(err);
+        else toast(err?.name === 'NotAllowedError' ? 'Kameraga ruxsat berilmadi — telefon/kompyuter sozlamalarida brauzerga kamera ruxsatini bering.' : 'Kamera topilmadi yoki band.', 'error');
     }
 }
 

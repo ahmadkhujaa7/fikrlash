@@ -104,6 +104,9 @@ class ChatMediaTest extends TestCase
             ->assertJsonPath('message.location', ['lat' => 41.311081, 'lng' => 69.240562, 'acc' => 18]);
 
         $this->actingAs($aziz)->postJson("/messages/{$conversation->id}", ['lat' => 120, 'lng' => 69])->assertStatus(422);
+        // Kompyuterdan (GPS yo‘q) — aniqlik ±150 km bo‘lsa ham qabul qilinadi.
+        $this->actingAs($aziz)->postJson("/messages/{$conversation->id}", ['lat' => 41.3, 'lng' => 69.24, 'acc' => 150000])
+            ->assertCreated()->assertJsonPath('message.location.acc', 150000);
         $this->actingAs($laylo)->get('/messages')->assertSee('Joylashuv');
     }
 

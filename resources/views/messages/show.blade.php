@@ -143,7 +143,7 @@
                                                 <span class="msg-map-pin"><svg viewBox="0 0 24 24" class="size-9" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd"/></svg></span>
                                                 <span class="absolute bottom-1 right-1.5 rounded bg-paper/80 px-1 text-[9px] text-ink-soft">© OpenStreetMap</span>
                                             </a>
-                                            <span class="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium"><x-ico name="map-pin" size="size-4" /> Joylashuv<span x-show="item.m.location.acc" class="font-normal opacity-70" x-text="'· ±' + item.m.location.acc + ' m'"></span></span>
+                                            <span class="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium"><x-ico name="map-pin" size="size-4" /> Joylashuv<span x-show="item.m.location.acc" class="font-normal opacity-70" x-text="'· ' + formatAccuracy(item.m.location.acc)"></span></span>
                                             <span class="mt-1 flex gap-3 text-[12px] font-medium underline underline-offset-2 opacity-90">
                                                 <a :href="mapLink(item.m.location)" target="_blank" rel="noopener">Google xarita</a>
                                                 <a :href="yandexLink(item.m.location)" target="_blank" rel="noopener">Yandex xarita</a>

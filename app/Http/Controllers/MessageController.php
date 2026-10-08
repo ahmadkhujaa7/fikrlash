@@ -270,7 +270,8 @@ class MessageController extends Controller
             'dims.*' => ['nullable', 'string', 'regex:/^\d{1,5}x\d{1,5}$/'],
             'lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:lng'],
             'lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:lat'],
-            'acc' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            // Kompyuterda (GPS yo‘q) aniqlik yuzlab km bo‘lishi mumkin — rad etilmaydi.
+            'acc' => ['nullable', 'numeric', 'min:0'],
             'post_id' => ['nullable', 'integer'],
             'reply_to_id' => ['nullable', 'integer'],
         ], [
