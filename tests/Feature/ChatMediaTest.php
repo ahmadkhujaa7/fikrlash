@@ -141,7 +141,9 @@ class ChatMediaTest extends TestCase
 
     public function test_recipients_list_shows_recent_people_and_search(): void
     {
-        [$aziz, $laylo] = User::factory()->count(2)->create();
+        // Ismlar aniq berilgan: tasodifiy "Sardor ..." qidiruv natijasini buzmasin.
+        $aziz = User::factory()->create(['name' => 'Aziz Karimov', 'username' => 'aziz_k']);
+        $laylo = User::factory()->create(['name' => 'Laylo Rahimova', 'username' => 'laylo_r']);
         $sardor = User::factory()->create(['name' => 'Sardor Toshmatov', 'username' => 'sardor_t']);
         $conversation = $this->open($aziz, $laylo);
         $this->actingAs($aziz)->postJson("/messages/{$conversation->id}", ['body' => 'Salom']);
