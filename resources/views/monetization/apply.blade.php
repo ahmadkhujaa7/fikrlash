@@ -17,6 +17,9 @@
     <x-page-header title="Monetizatsiya" text="Maqolalaringiz o‘qilgani uchun daromad oling. Talablarga yetgach so‘rov yuboring — admin tasdiqlagandan keyin yozgan maqolalaringiz pul keltiradi." />
 
     <div class="space-y-8 px-4 pb-12 sm:px-6">
+        @if ($hasEarnings ?? false)
+            <a href="{{ route('monetization.index') }}" class="-mt-2 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-lapis hover:underline"><x-ico name="arrow-left" size="size-4" /> Balans va to‘lovlar</a>
+        @endif
         @unless ($settings['enabled'])
             <div class="rounded-2xl bg-amber-soft/70 px-4 py-3 text-[14px] text-ink-soft">Monetizatsiya dasturi hozircha yopiq. Ochilganda shu sahifada so‘rov yuborishingiz mumkin bo‘ladi.</div>
         @endunless

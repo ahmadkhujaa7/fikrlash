@@ -7,6 +7,7 @@ use App\Enums\UserStatus;
 use App\Models\User;
 use App\Services\Media\ImageService;
 use App\Services\Moderation\ModerationService;
+use App\Services\Monetization\MonetizationService;
 use App\Services\Security\SessionService;
 use App\Services\Social\AuditLogger;
 use App\Support\PhoneNumber;
@@ -30,14 +31,16 @@ class AdminUserService
         private VerificationService $verification,
         private SessionService $sessions,
         private ImageService $images,
+        private MonetizationService $monetization,
     ) {}
 
     public function create(array $data, User $admin): User
     {
         $verified = (bool) ($data['is_verified'] ?? false);
+        $author = (bool) ($data['is_author'] ?? false);
         $status = $this->status($data['status'] ?? UserStatus::Active);
         $until = $data['suspended_until'] ?? null;
-        unset($data['is_verified'], $data['status'], $data['suspended_until'], $data['password_confirmation']);
+        unset($data['is_verified'], $data['is_author'], $data['status'], $data['suspended_until'], $data['password_confirmation']);
 
         $user = DB::transaction(function () use ($data) {
             $user = new User;
@@ -52,6 +55,9 @@ class AdminUserService
         if ($verified) {
             $this->verification->verify($user, $admin);
         }
+        if ($author) {
+            $this->monetization->grant($user, $admin);
+        }
 
         return $user;
     }
@@ -60,10 +66,11 @@ class AdminUserService
     {
         $isSelf = $admin->is($user);
         $verified = array_key_exists('is_verified', $data) ? (bool) $data['is_verified'] : null;
+        $author = array_key_exists('is_author', $data) ? (bool) $data['is_author'] : null;
         $status = array_key_exists('status', $data) && ! $isSelf ? $this->status($data['status']) : null;
         $until = $data['suspended_until'] ?? null;
         $password = filled($data['password'] ?? null) ? $data['password'] : null;
-        unset($data['is_verified'], $data['status'], $data['suspended_until'], $data['password'], $data['password_confirmation']);
+        unset($data['is_verified'], $data['is_author'], $data['status'], $data['suspended_until'], $data['password'], $data['password_confirmation']);
 
         if ($isSelf) {
             unset($data['role']); // admin o‘z rolini tushirib qo‘ya olmaydi
@@ -110,6 +117,9 @@ class AdminUserService
         }
         if ($verified !== null) {
             $verified ? $this->verification->verify($user, $admin) : $this->verification->unverify($user, $admin);
+        }
+        if ($author !== null && $author !== $user->isMonetized()) {
+            $author ? $this->monetization->grant($user, $admin) : $this->monetization->revoke($user, $admin);
         }
 
         return $user->fresh();

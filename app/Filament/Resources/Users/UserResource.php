@@ -8,6 +8,7 @@ use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Filament\InitialsAvatarProvider;
+use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
@@ -21,6 +22,7 @@ use App\Services\Account\VerificationService;
 use App\Services\Feed\TasteService;
 use App\Services\Media\ImageService;
 use App\Services\Moderation\ModerationService;
+use App\Services\Monetization\MonetizationService;
 use App\Services\Security\ImpersonationService;
 use App\Services\Security\SessionService;
 use App\Services\Social\AuditLogger;
@@ -195,6 +197,9 @@ class UserResource extends Resource
                 Toggle::make('is_verified')->label('Tasdiqlangan akkaunt')->inline(false)
                     ->afterStateHydrated(fn (Toggle $component, ?User $record) => $component->state($record?->isVerified() ?? false))
                     ->helperText('Ism yonida tasdiqlangan belgisi ko‘rinadi.'),
+                Toggle::make('is_author')->label('Muallif (monetizatsiya)')->inline(false)
+                    ->afterStateHydrated(fn (Toggle $component, ?User $record) => $component->state($record?->isMonetized() ?? false))
+                    ->helperText('Yoqilsa — so‘rov va talablarsiz muallif bo‘ladi: shundan keyin chop etilgan maqolalari ko‘rishlari uchun daromad hisoblanadi, ismi yonida «Muallif» belgisi chiqadi. O‘chirilsa — monetizatsiya to‘xtaydi, balans saqlanadi.'),
             ]),
 
             Section::make('Ichki izoh')->description('Faqat adminlar ko‘radi; bazada shifrlangan holda saqlanadi.')
@@ -264,6 +269,8 @@ class UserResource extends Resource
                 TextEntry::make('created_at')->label('Ro‘yxatdan o‘tgan')->dateTime('d.m.Y H:i'),
                 TextEntry::make('verified_at')->label('Tasdiqlangan')->dateTime('d.m.Y')->placeholder('Yo‘q')
                     ->helperText(fn (User $r) => $r->verified_by ? 'Admin: @'.User::withTrashed()->find($r->verified_by)?->username : null),
+                TextEntry::make('monetized_at')->label('Muallif (monetizatsiya)')->dateTime('d.m.Y')->placeholder('Yo‘q')
+                    ->url(fn (User $r) => $r->monetized_at ? AuthorResource::getUrl('index', ['search' => $r->name]) : null),
                 TextEntry::make('deleted_at')->label('O‘chirilgan')->dateTime('d.m.Y H:i')->placeholder('—')
                     ->visible(fn (User $r) => $r->trashed()),
             ]),
@@ -304,6 +311,10 @@ class UserResource extends Resource
                 TextColumn::make('email')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')->label('Holat')->badge()->color(fn (User $r) => self::statusColor($r->status)),
                 TextColumn::make('role')->label('Rol')->badge()->color(fn (User $r) => $r->isAdmin() ? 'warning' : 'gray')->toggleable(),
+                TextColumn::make('monetized_at')->label('Muallif')->badge()->color('warning')
+                    ->formatStateUsing(fn () => 'Muallif')->placeholder('—')
+                    ->tooltip(fn (User $r) => $r->monetized_at ? $r->monetized_at->format('d.m.Y').' dan beri' : null)
+                    ->toggleable(),
                 TextColumn::make('posts_count')->label('Postlar')->counts('posts')->numeric()->sortable(),
                 TextColumn::make('followers_count')->label('Obunachilar')->numeric()->sortable()->toggleable(),
                 TextColumn::make('last_active_at')->label('Faollik')->sortable()
@@ -322,6 +333,12 @@ class UserResource extends Resource
                     ->queries(
                         true: fn (Builder $query) => $query->whereNotNull('verified_at'),
                         false: fn (Builder $query) => $query->whereNull('verified_at'),
+                    ),
+                TernaryFilter::make('author')->label('Muallif (monetizatsiya)')
+                    ->trueLabel('Faqat mualliflar')->falseLabel('Muallif emaslar')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('monetized_at'),
+                        false: fn (Builder $query) => $query->whereNull('monetized_at'),
                     ),
                 SelectFilter::make('activity')->label('Faollik')
                     ->options(['online' => 'Hozir onlayn', '1' => 'Bugun faol', '7' => '7 kunda faol', '30' => '30 kunda faol', 'inactive' => '30+ kun faol emas'])
@@ -356,6 +373,7 @@ class UserResource extends Resource
                     ViewAction::make(),
                     EditAction::make(),
                     ...self::verificationActions(),
+                    ...self::authorActions(),
                     ...self::accountActions(),
                     ...self::moderationActions(),
                 ]),
@@ -425,6 +443,37 @@ class UserResource extends Resource
                 ->action(function (User $record) {
                     app(VerificationService::class)->unverify($record, auth()->user());
                     Notification::make()->title('Tasdiq belgisi olib tashlandi')->success()->send();
+                }),
+        ];
+    }
+
+    /** @return list<Action> */
+    public static function authorActions(): array
+    {
+        return [
+            Action::make('grantAuthor')
+                ->label('Mualliflik huquqini berish')
+                ->icon(Heroicon::OutlinedPencilSquare)->color('warning')
+                ->visible(fn (User $r) => ! $r->trashed() && ! $r->isMonetized())
+                ->modalHeading('Mualliflik huquqini berish')
+                ->modalDescription('Monetizatsiya yoqiladi — so‘rov va talablarsiz. Shundan keyin chop etilgan maqolalarining ko‘rishlari uchun daromad hisoblanadi, ismi yonida «Muallif» belgisi chiqadi. Foydalanuvchiga bildirishnoma boradi.')
+                ->schema([Textarea::make('note')->label('Izoh (ixtiyoriy, foydalanuvchiga ko‘rinadi)')->maxLength(500)->rows(2)])
+                ->modalSubmitActionLabel('Muallif qilish')
+                ->action(function (User $record, array $data) {
+                    app(MonetizationService::class)->grant($record, auth()->user(), $data['note'] ?? null);
+                    Notification::make()->title('Mualliflik huquqi berildi')->success()->send();
+                }),
+            Action::make('revokeAuthor')
+                ->label('Mualliflikni to‘xtatish')
+                ->icon(Heroicon::OutlinedPauseCircle)->color('danger')
+                ->visible(fn (User $r) => $r->isMonetized())
+                ->modalHeading('Monetizatsiyani to‘xtatish')
+                ->modalDescription('Yangi daromad hisoblanmaydi, balansdagi mablag‘ saqlanadi. Foydalanuvchi keyin talablarga javob bersa, qayta so‘rov yubora oladi.')
+                ->schema([Textarea::make('reason')->label('Sabab (foydalanuvchiga ko‘rinadi)')->maxLength(500)->rows(2)])
+                ->modalSubmitActionLabel('To‘xtatish')
+                ->action(function (User $record, array $data) {
+                    app(MonetizationService::class)->revoke($record, auth()->user(), $data['reason'] ?? null);
+                    Notification::make()->title('Monetizatsiya to‘xtatildi')->success()->send();
                 }),
         ];
     }

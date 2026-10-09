@@ -27,7 +27,7 @@ class ClaudeProvider implements AiProvider
     public function analyzePost(string $content, array $categorySlugs): AiAnalysisResult
     {
         if (empty($this->config['api_key'])) {
-            throw new AiException('ANTHROPIC_API_KEY sozlanmagan.', permanent: true);
+            throw new AiException('Claude API kaliti sozlanmagan (Admin → AI → AI sozlamalari yoki .env ANTHROPIC_API_KEY).', permanent: true);
         }
 
         try {

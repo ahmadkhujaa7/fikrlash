@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\PostAiAnalysis;
+use App\Services\Ai\AiConfig;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Number;
@@ -27,13 +28,13 @@ class AiUsageStats extends StatsOverviewWidget
             Stat::make('Xatolar', $failed)->color($failed > 0 ? 'danger' : 'success')
                 ->description($total + $failed > 0 ? round($failed / ($total + $failed) * 100, 1).'% xato darajasi' : '—'),
             Stat::make('Tokenlar', Number::abbreviate($tokens))->description('Kesh orqali tejaldi: '.(clone $done)->where('provider', 'cache')->count().' ta'),
-            Stat::make('Taxminiy xarajat', '$'.number_format($cost, 2))->description('config/ai.php narxlari bo‘yicha'),
+            Stat::make('Taxminiy xarajat', '$'.number_format($cost, 2))->description('AI sozlamalaridagi narxlar bo‘yicha'),
             Stat::make('O‘rtacha sifat', round((float) (clone $done)->avg('quality_score'), 1).'/100'),
             Stat::make('Xavfli deb topilgan', (clone $done)->where(fn ($q) => $q
-                ->where('toxicity_score', '>=', config('ai.thresholds.toxicity_review'))
-                ->orWhere('spam_score', '>=', config('ai.thresholds.spam_review')))->count())->color('warning'),
+                ->where('toxicity_score', '>=', AiConfig::thresholds()['toxicity_review'])
+                ->orWhere('spam_score', '>=', AiConfig::thresholds()['spam_review']))->count())->color('warning'),
             Stat::make('O‘rtacha javob vaqti', round((float) (clone $done)->where('provider', '!=', 'cache')->avg('latency_ms')).' ms'),
-            Stat::make('Provayder', (string) config('ai.provider'))->description(config('ai.enabled') ? 'Yoqilgan' : 'O‘chirilgan'),
+            Stat::make('Provayder', AiConfig::PROVIDERS[AiConfig::provider()])->description(AiConfig::enabled() ? 'Yoqilgan' : 'O‘chirilgan'),
         ];
     }
 }

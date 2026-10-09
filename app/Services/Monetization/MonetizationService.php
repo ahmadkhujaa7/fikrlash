@@ -146,15 +146,57 @@ class MonetizationService
         $this->audit->log('monetization.rejected', $application->user, [], ['application' => $application->id, 'reason' => $reason], $admin);
     }
 
-    /** Monetizatsiyani to‘xtatish: yangi daromad hisoblanmaydi, mavjud balans saqlanadi. */
-    public function revoke(User $user, User $admin, string $reason): void
+    /**
+     * Admin so‘rovsiz, to‘g‘ridan-to‘g‘ri muallif qiladi (foydalanuvchilar sahifasidan).
+     * Talablar tekshirilmaydi; ko‘rib chiqilayotgan so‘rov bo‘lsa — o‘sha tasdiqlanadi.
+     */
+    public function grant(User $user, User $admin, ?string $note = null): void
     {
+        if ($user->isMonetized()) {
+            return;
+        }
+
+        if ($pending = $this->pendingApplication($user)) {
+            $this->approve($pending, $admin, $note);
+
+            return;
+        }
+
+        $e = $this->eligibility($user)['checks'];
+        $application = DB::transaction(function () use ($user, $admin, $note, $e) {
+            $application = $user->authorApplications()->create([
+                'status' => AuthorApplication::APPROVED,
+                'followers' => $e['followers']['current'],
+                'article_views' => $e['views']['current'],
+                'articles' => $e['articles']['current'],
+                'admin_note' => $note ?: 'Admin tomonidan berildi',
+                'reviewed_by' => $admin->id,
+                'reviewed_at' => now(),
+            ]);
+            $user->forceFill(['monetized_at' => now()])->save();
+
+            return $application;
+        });
+
+        $this->notify($user, 'Tabriklaymiz! Sizga Fikrlash muallifi maqomi berildi. Endi chop etadigan maqolalaringiz ko‘rishlari uchun daromad hisoblanadi.'.($note ? ' Izoh: '.$note : ''));
+        $this->audit->log('monetization.granted', $user, [], ['application' => $application->id, 'note' => $note], $admin);
+    }
+
+    /**
+     * Monetizatsiyani to‘xtatish: yangi daromad hisoblanmaydi, mavjud balans saqlanadi.
+     * Foydalanuvchi keyin talablarga javob bersa, qayta so‘rov yubora oladi.
+     */
+    public function revoke(User $user, User $admin, ?string $reason = null): void
+    {
+        $reason = trim((string) $reason) ?: null;
+
         DB::transaction(function () use ($user, $admin, $reason) {
             $user->forceFill(['monetized_at' => null])->save();
             $user->authorApplications()->where('status', AuthorApplication::APPROVED)
                 ->update(['status' => AuthorApplication::REVOKED, 'admin_note' => $reason, 'reviewed_by' => $admin->id, 'reviewed_at' => now()]);
         });
-        $this->notify($user, 'Monetizatsiya to‘xtatildi. Sabab: '.$reason.' Balansdagi mablag‘ saqlanadi.');
+        $this->notify($user, 'Monetizatsiya to‘xtatildi.'.($reason ? ' Sabab: '.$reason.'.' : '')
+            .' Balansdagi mablag‘ saqlanadi. Talablarga javob bersangiz, qayta so‘rov yuborishingiz mumkin.');
         $this->audit->log('monetization.revoked', $user, [], ['reason' => $reason], $admin);
     }
 

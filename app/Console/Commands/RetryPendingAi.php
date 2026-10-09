@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\AnalyzePostJob;
 use App\Models\Post;
+use App\Services\Ai\AiConfig;
 use Illuminate\Console\Command;
 
 class RetryPendingAi extends Command
@@ -14,7 +15,7 @@ class RetryPendingAi extends Command
 
     public function handle(): int
     {
-        if (! config('ai.enabled') || config('ai.provider') === 'null') {
+        if (! AiConfig::enabled() || AiConfig::provider() === 'null') {
             return self::SUCCESS;
         }
 

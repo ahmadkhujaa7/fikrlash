@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\PostAiAnalysis;
+use App\Services\Ai\AiConfig;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -24,8 +25,8 @@ class LatestAiAnalyses extends TableWidget
                 TextColumn::make('category')->label('Kategoriya')->placeholder('—'),
                 TextColumn::make('sentiment')->label('Kayfiyat')->badge()->color('gray')->placeholder('—'),
                 TextColumn::make('quality_score')->label('Sifat')->placeholder('—'),
-                TextColumn::make('toxicity_score')->label('Toksik')->placeholder('—')->color(fn ($state) => $state >= config('ai.thresholds.toxicity_review') ? 'danger' : null),
-                TextColumn::make('spam_score')->label('Spam')->placeholder('—')->color(fn ($state) => $state >= config('ai.thresholds.spam_review') ? 'danger' : null),
+                TextColumn::make('toxicity_score')->label('Toksik')->placeholder('—')->color(fn ($state) => $state >= AiConfig::thresholds()['toxicity_review'] ? 'danger' : null),
+                TextColumn::make('spam_score')->label('Spam')->placeholder('—')->color(fn ($state) => $state >= AiConfig::thresholds()['spam_review'] ? 'danger' : null),
                 TextColumn::make('provider')->label('Provayder')->description(fn (PostAiAnalysis $r) => $r->model),
                 TextColumn::make('error')->label('Xato')->limit(40)->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')->label('Vaqt')->since(),

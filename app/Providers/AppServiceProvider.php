@@ -9,6 +9,7 @@ use App\Models\PersonalAccessToken;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\Ai\AiConfig;
 use App\Services\Chat\ChatService;
 use App\Services\Sms\ArraySmsProvider;
 use App\Services\Sms\EskizSmsProvider;
@@ -124,6 +125,6 @@ class AppServiceProvider extends ServiceProvider
         // Maqola ichidagi rasmlar: bitta maqolada 30 tagacha bo‘lishi mumkin.
         RateLimiter::for('media', fn (Request $r) => [Limit::perMinute(20)->by('media:'.$by($r)), Limit::perDay(200)->by('media-day:'.$by($r))]);
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(120)->by('api:'.$by($r)));
-        RateLimiter::for('ai', fn () => Limit::perMinute((int) config('ai.requests_per_minute')));
+        RateLimiter::for('ai', fn () => Limit::perMinute(AiConfig::requestsPerMinute()));
     }
 }

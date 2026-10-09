@@ -13,6 +13,7 @@ use App\Models\PostAiAnalysis;
 use App\Models\Report;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Ai\AiConfig;
 use App\Services\Social\AuditLogger;
 use App\Services\Social\NotificationService;
 use Illuminate\Support\Carbon;
@@ -131,7 +132,7 @@ class ModerationService
             return false;
         }
 
-        $thresholds = config('ai.thresholds');
+        $thresholds = AiConfig::thresholds();
         $risky = ($analysis->toxicity_score ?? 0) >= $thresholds['toxicity_review']
             || ($analysis->spam_score ?? 0) >= $thresholds['spam_review'];
 

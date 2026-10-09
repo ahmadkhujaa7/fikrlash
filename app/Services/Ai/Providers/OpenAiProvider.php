@@ -21,7 +21,7 @@ class OpenAiProvider implements AiProvider
     public function analyzePost(string $content, array $categorySlugs): AiAnalysisResult
     {
         if (empty($this->config['api_key'])) {
-            throw new AiException('OPENAI_API_KEY sozlanmagan.', permanent: true);
+            throw new AiException('OpenAI API kaliti sozlanmagan (Admin → AI → AI sozlamalari yoki .env OPENAI_API_KEY).', permanent: true);
         }
 
         $system = AnalysisPrompt::system($categorySlugs)

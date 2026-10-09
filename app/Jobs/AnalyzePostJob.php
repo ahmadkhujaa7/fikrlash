@@ -6,8 +6,8 @@ use App\Exceptions\AiException;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostAiAnalysis;
-use App\Models\Setting;
 use App\Services\Ai\AiAnalysisResult;
+use App\Services\Ai\AiConfig;
 use App\Services\Ai\AiManager;
 use App\Services\Moderation\ModerationService;
 use Illuminate\Bus\Queueable;
@@ -79,7 +79,7 @@ class AnalyzePostJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(AiManager $ai, ModerationService $moderation): void
     {
-        if (! config('ai.enabled') || ! Setting::read('ai_enabled')) {
+        if (! AiConfig::enabled()) {
             return;
         }
 
@@ -107,7 +107,7 @@ class AnalyzePostJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (RateLimiter::tooManyAttempts('ai:daily', (int) config('ai.daily_request_limit'))) {
+        if (RateLimiter::tooManyAttempts('ai:daily', AiConfig::dailyLimit())) {
             Log::channel('ai')->warning('AI kunlik limitga yetdi — tahlil keyinga qoldirildi', ['post_id' => $post->id]);
 
             return; // scheduler "ai:retry-pending" keyinroq qayta yuboradi
@@ -139,7 +139,7 @@ class AnalyzePostJob implements ShouldBeUnique, ShouldQueue
         PostAiAnalysis::query()->create([
             'post_id' => $this->postId,
             'status' => PostAiAnalysis::STATUS_FAILED,
-            'provider' => (string) config('ai.provider'),
+            'provider' => AiConfig::provider(),
             'error' => mb_substr((string) $e?->getMessage(), 0, 500),
         ]);
 
@@ -196,19 +196,20 @@ class AnalyzePostJob implements ShouldBeUnique, ShouldQueue
         $quality = $r?->qualityScore ?? $a?->quality_score;
         $category = $r?->category ?? $a?->category;
 
+        $thresholds = AiConfig::thresholds();
         $post->forceFill([
             'ai_score' => $quality,
             'ai_category' => $category,
             'ai_sentiment' => $r?->sentiment ?? $a?->sentiment,
             'ai_topic' => $r?->topic ?? $a?->topic,
             'ai_summary' => $r?->summary ?? $a?->summary,
-            'ai_flagged' => ($r?->toxicityScore ?? $a?->toxicity_score ?? 0) >= config('ai.thresholds.toxicity_review')
-                || ($r?->spamScore ?? $a?->spam_score ?? 0) >= config('ai.thresholds.spam_review'),
+            'ai_flagged' => ($r?->toxicityScore ?? $a?->toxicity_score ?? 0) >= $thresholds['toxicity_review']
+                || ($r?->spamScore ?? $a?->spam_score ?? 0) >= $thresholds['spam_review'],
             'ai_analyzed_at' => now(),
         ]);
 
         // Foydalanuvchi kategoriya tanlamagan bo‘lsa — AI taklifi qo‘yiladi.
-        if (! $post->category_id && $category && $quality >= config('ai.thresholds.auto_category_min_quality')) {
+        if (! $post->category_id && $category && $quality >= $thresholds['auto_category_min_quality']) {
             $post->category_id = Category::cachedActive()->firstWhere('slug', $category)?->id;
         }
 

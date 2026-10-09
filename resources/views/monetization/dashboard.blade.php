@@ -29,8 +29,20 @@
         @endif
     </x-page-header>
     @unless ($me->isMonetized())
-        <div class="mx-4 mb-6 rounded-2xl bg-anor-soft/60 px-4 py-3 text-[13.5px] leading-relaxed text-ink-soft sm:mx-6">
-            <strong class="text-anor">Monetizatsiya to‘xtatilgan.</strong> Yangi daromad hisoblanmaydi, lekin balansdagi mablag‘ni yechib olishingiz mumkin.
+        @php $reapplying = $application?->status === \App\Models\AuthorApplication::PENDING; @endphp
+        <div class="mx-4 mb-6 flex flex-col gap-3 rounded-2xl bg-anor-soft/60 px-4 py-3 text-[13.5px] leading-relaxed text-ink-soft sm:mx-6 sm:flex-row sm:items-center">
+            <p class="min-w-0 flex-1">
+                @if ($reapplying)
+                    <strong class="text-ink">Qayta so‘rovingiz ko‘rib chiqilmoqda.</strong> Tasdiqlangach, yangi maqolalaringiz yana daromad keltiradi.
+                @else
+                    <strong class="text-anor">Monetizatsiya to‘xtatilgan.</strong>
+                    @if ($application?->admin_note) Sabab: {{ $application->admin_note }}. @endif
+                    Yangi daromad hisoblanmaydi, lekin balansdagi mablag‘ni yechib olishingiz mumkin. Talablarga javob bersangiz, qayta so‘rov yuborishingiz mumkin.
+                @endif
+            </p>
+            @unless ($reapplying)
+                <a href="{{ route('monetization.index', ['apply' => 1]) }}" class="btn btn-secondary btn-sm shrink-0 self-start bg-paper sm:self-auto">Qayta so‘rov yuborish</a>
+            @endunless
         </div>
     @endunless
 

@@ -72,11 +72,6 @@ class SystemSettings extends Page
                     Textarea::make('announcement')->label('E’lon (barcha sahifalar tepasida)')->maxLength(300)
                         ->helperText('Bo‘sh qoldirilsa — e’lon ko‘rsatilmaydi.'),
                 ]),
-                Section::make('AI')->schema([
-                    Toggle::make('ai_enabled')->label('AI tahlil yoqilgan'),
-                    Toggle::make('ai_auto_moderation')->label('Xavfli postlarni avtomatik tekshiruvga yuborish')
-                        ->helperText('Toksiklik yoki spam bahosi chegaradan oshsa post moderator tekshiruvini kutadi. Foydalanuvchi avtomatik jazolanmaydi.'),
-                ]),
             ])
             ->statePath('data');
     }

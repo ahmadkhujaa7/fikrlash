@@ -38,6 +38,8 @@ class ListUsers extends ListRecords
                 ->badge($count(fn ($q) => $q->where('created_at', '>=', today()))),
             'verified' => Tab::make('Tasdiqlangan')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereNotNull('verified_at')),
+            'authors' => Tab::make('Mualliflar')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNotNull('monetized_at')),
             'restricted' => Tab::make('Cheklangan / bloklangan')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [UserStatus::Suspended, UserStatus::Blocked]))
                 ->badge($count(fn ($q) => $q->whereIn('status', [UserStatus::Suspended, UserStatus::Blocked])))->badgeColor('danger'),

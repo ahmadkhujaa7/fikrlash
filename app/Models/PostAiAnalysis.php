@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Ai\AiConfig;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -33,10 +34,10 @@ class PostAiAnalysis extends Model
         return $this->belongsTo(Post::class)->withTrashed();
     }
 
-    /** Taxminiy narx (USD), config/ai.php dagi narxlar asosida. */
+    /** Taxminiy narx (USD) — admin paneldagi (yoki config/ai.php dagi) narxlar asosida. */
     public function estimatedCost(): float
     {
-        $prices = config("ai.providers.{$this->provider}", []);
+        $prices = AiConfig::providerConfig((string) $this->provider);
 
         return ($this->input_tokens * ($prices['price_input'] ?? 0) + $this->output_tokens * ($prices['price_output'] ?? 0)) / 1_000_000;
     }

@@ -22,12 +22,15 @@ class MonetizationController extends Controller
         $user = $request->user();
         $settings = $this->monetization->settings();
 
-        // Monetizatsiyasi to‘xtatilgan, lekin balansi bor muallif — panelni ko‘radi (pulini yechib oladi).
-        if (! $user->isMonetized() && ! $user->authorEarnings()->exists()) {
+        // Monetizatsiyasi to‘xtatilgan, lekin balansi bor muallif — panelni ko‘radi (pulini yechib oladi);
+        // ?apply=1 — qayta so‘rov sahifasi.
+        $hasEarnings = $user->authorEarnings()->exists();
+        if (! $user->isMonetized() && (! $hasEarnings || $request->boolean('apply'))) {
             return view('monetization.apply', [
                 'settings' => $settings,
                 'eligibility' => $this->monetization->eligibility($user),
                 'application' => $user->authorApplications()->latest('id')->first(),
+                'hasEarnings' => $hasEarnings,
             ]);
         }
 
@@ -45,6 +48,7 @@ class MonetizationController extends Controller
             'articles' => $this->monetization->articles($user),
             'payouts' => $user->authorPayouts()->latest('id')->limit(20)->get(),
             'pendingPayout' => $user->authorPayouts()->where('status', AuthorPayout::PENDING)->exists(),
+            'application' => $user->isMonetized() ? null : $user->authorApplications()->latest('id')->first(),
         ]);
     }
 

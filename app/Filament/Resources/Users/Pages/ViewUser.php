@@ -22,6 +22,7 @@ class ViewUser extends ViewRecord
         return [
             EditAction::make()->label('Tahrirlash'),
             ...UserResource::verificationActions(),
+            ...UserResource::authorActions(),
             ActionGroup::make([...UserResource::accountActions(), ...UserResource::moderationActions()])
                 ->label('Boshqa amallar')->icon(Heroicon::OutlinedEllipsisVertical)->button()->color('gray'),
         ];

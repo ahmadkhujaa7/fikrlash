@@ -6,6 +6,8 @@ use App\Filament\Pages\MonetizationSettings;
 use App\Filament\Resources\AuthorApplications\Pages\ManageAuthorApplications;
 use App\Filament\Resources\AuthorPayouts\Pages\ManageAuthorPayouts;
 use App\Filament\Resources\Authors\Pages\ManageAuthors;
+use App\Filament\Resources\Users\Pages\EditUser;
+use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\AuthorApplication;
 use App\Models\AuthorEarning;
 use App\Models\AuthorPayout;
@@ -168,5 +170,62 @@ class MonetizationTest extends TestCase
             ->assertHasNoTableActionErrors();
         $this->assertFalse($author->fresh()->isMonetized());
         $this->assertSame(0, AuthorApplication::query()->where('status', 'approved')->count());
+    }
+
+    public function test_admin_grants_and_revokes_authorship_from_users_page(): void
+    {
+        $admin = $this->admin();
+        $user = User::factory()->create(['name' => 'Jasur Aliyev']);
+
+        // Jadvaldagi amal: talablarsiz muallif qilish.
+        Livewire::actingAs($admin)->test(ListUsers::class)
+            ->callTableAction('grantAuthor', $user, ['note' => 'Sifatli maqolalar uchun'])
+            ->assertHasNoTableActionErrors();
+        $user->refresh();
+        $this->assertTrue($user->isMonetized());
+        $this->assertSame(AuthorApplication::APPROVED, $user->authorApplications()->value('status'));
+        $this->assertStringContainsString('Sifatli maqolalar uchun', (string) $user->notifications()->latest('id')->first()->data['message']);
+        $this->actingAs($admin)->get('/admin/users/'.$user->id)->assertOk()->assertSee('Mualliflikni to‘xtatish');
+
+        // Tahrirlash formasidagi tugma bilan o‘chirish va qayta yoqish.
+        Livewire::actingAs($admin)->test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->assertFormSet(['is_author' => true])
+            ->fillForm(['is_author' => false])->call('save')->assertHasNoFormErrors();
+        $this->assertFalse($user->fresh()->isMonetized());
+        $this->assertSame(AuthorApplication::REVOKED, $user->authorApplications()->value('status'));
+
+        Livewire::actingAs($admin)->test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->fillForm(['is_author' => true])->call('save')->assertHasNoFormErrors();
+        $this->assertTrue($user->fresh()->isMonetized());
+
+        Livewire::actingAs($admin)->test(ListUsers::class)
+            ->filterTable('author', true)->assertCanSeeTableRecords([$user])->assertCanNotSeeTableRecords([$admin]);
+    }
+
+    public function test_revoked_author_with_balance_can_apply_again(): void
+    {
+        $this->settings(['min_followers' => 0, 'min_views' => 0, 'min_articles' => 0]);
+        $admin = $this->admin();
+        $author = User::factory()->create(['monetized_at' => now()->subMonth()]);
+        $this->article($author, ['published_at' => now()->subWeeks(2)]);
+        AuthorEarning::query()->create(['user_id' => $author->id, 'post_id' => Post::query()->value('id'), 'date' => today(), 'views' => 10, 'amount' => 50]);
+        $author->authorApplications()->create(['status' => AuthorApplication::APPROVED]);
+
+        app(MonetizationService::class)->revoke($author, $admin, 'Takroriy kontent');
+        $this->assertStringContainsString('qayta so‘rov yuborishingiz mumkin', (string) $author->notifications()->latest('id')->first()->data['message']);
+
+        // Balansi bor — panel ochiladi, unda sabab va "Qayta so‘rov yuborish" tugmasi.
+        $this->actingAs($author)->get('/monetization')->assertOk()
+            ->assertSee('Monetizatsiya to‘xtatilgan')->assertSee('Takroriy kontent')->assertSee('Qayta so‘rov yuborish');
+        $this->actingAs($author)->get('/monetization?apply=1')->assertOk()
+            ->assertSee('Muallif bo‘lish uchun so‘rov')->assertSee('Balans va to‘lovlar');
+
+        $this->actingAs($author)->post('/monetization/apply', ['message' => 'Endi faqat original yozaman'])->assertSessionHas('toast');
+        $this->assertSame(AuthorApplication::PENDING, $author->authorApplications()->latest('id')->value('status'));
+        $this->actingAs($author)->get('/monetization')->assertSee('Qayta so‘rovingiz ko‘rib chiqilmoqda')->assertDontSee('Qayta so‘rov yuborish');
+
+        // Admin tasdiqlaydi — muallif qaytadan monetizatsiyada.
+        app(MonetizationService::class)->approve($author->authorApplications()->latest('id')->first(), $admin);
+        $this->assertTrue($author->fresh()->isMonetized());
     }
 }
