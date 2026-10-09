@@ -5,6 +5,19 @@
 @section('content')
     <x-auth-steps :current="1" />
 
+    {{-- Do‘st taklifi yoki kampaniya havolasi bilan kelganlarga salomlashuv --}}
+    @if ($landing['inviter'] ?? null)
+        <div class="mb-6 flex items-center gap-3 rounded-2xl bg-lapis-soft px-4 py-3">
+            <x-avatar :user="$landing['inviter']" size="sm" />
+            <p class="min-w-0 text-[14px] leading-snug text-ink"><strong class="font-semibold">{{ $landing['inviter']->name }}</strong> sizni Fikrlash’ga taklif qildi. Ro‘yxatdan o‘ting — u bilan birga o‘qing va yozing.</p>
+        </div>
+    @elseif ($landing['welcome'] ?? null)
+        <div class="mb-6 flex items-start gap-3 rounded-2xl bg-lapis-soft px-4 py-3">
+            <x-ico name="sparkles" size="size-5" class="mt-0.5 shrink-0 text-lapis" />
+            <p class="min-w-0 text-[14px] leading-snug text-ink">{{ $landing['welcome'] }}</p>
+        </div>
+    @endif
+
     <h1 class="display !text-[2rem] sm:!text-[2.25rem]">Fikrlaringiz uchun joy</h1>
     <p class="mt-2 text-ink-soft">Avval ma’lumotlaringizni kiriting. Keyingi bosqichda telefon raqamingizni SMS kod bilan tasdiqlaysiz.</p>
 

@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Auth\OtpService;
 use App\Services\Auth\RegistrationService;
+use App\Services\Marketing\MarketingService;
 use App\Services\Security\LoginTracker;
 use App\Services\Sms\LogSmsProvider;
 use App\Support\PhoneNumber;
@@ -26,7 +27,7 @@ class RegisterController extends Controller
 {
     private const SESSION_KEY = 'registration_token';
 
-    public function __construct(private RegistrationService $registration, private OtpService $otp) {}
+    public function __construct(private RegistrationService $registration, private OtpService $otp, private MarketingService $marketing) {}
 
     /** 1-bosqich: ma'lumotlar. "Raqamni o‘zgartirish" dan qaytilsa — oldin kiritilganlar to‘ldirib qo‘yiladi. */
     public function create(Request $request): View
@@ -35,6 +36,8 @@ class RegisterController extends Controller
 
         return view('auth.register', [
             'registrationOpen' => Setting::read('registration_open'),
+            // Kampaniya havolasi yoki do‘st taklifi bilan kelgan bo‘lsa — salomlashuv.
+            'landing' => rescue(fn () => $this->marketing->landing($request), ['inviter' => null, 'welcome' => null], report: false),
             'prefill' => $pending ? [
                 'name' => $pending['name'],
                 'username' => $pending['username'],
@@ -83,6 +86,7 @@ class RegisterController extends Controller
         }
 
         $request->session()->put(self::SESSION_KEY, $token);
+        rescue(fn () => $this->marketing->recordStart($request), report: true);
 
         return redirect()->route('register.verify');
     }
@@ -117,6 +121,7 @@ class RegisterController extends Controller
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->save();
         app(LoginTracker::class)->record('register', $user, request());
+        rescue(fn () => $this->marketing->attribute($user, $request), report: true);
 
         return redirect()->route('home')->with('toast', 'Xush kelibsiz, '.$user->name.'!');
     }

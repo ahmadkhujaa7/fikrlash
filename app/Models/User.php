@@ -14,6 +14,7 @@ use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -185,6 +186,37 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function authorPayouts(): HasMany
     {
         return $this->hasMany(AuthorPayout::class);
+    }
+
+    /** Qaysi kampaniya havolasi orqali ro‘yxatdan o‘tgan. */
+    public function acquisitionLink(): BelongsTo
+    {
+        return $this->belongsTo(MarketingLink::class, 'acquisition_link_id')->withTrashed();
+    }
+
+    /** Uni taklif qilgan foydalanuvchi ("Do‘stni taklif qilish"). */
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'referred_by')->withTrashed();
+    }
+
+    /** U taklif qilib, ro‘yxatdan o‘tganlar. */
+    public function invitees(): HasMany
+    {
+        return $this->hasMany(User::class, 'referred_by');
+    }
+
+    /** "Havola: Tg1", "Taklif: @laylo", "UTM: instagram / reklama", "Sayt: t.me", "To‘g‘ridan-to‘g‘ri". */
+    public function acquisitionLabel(): string
+    {
+        return match ($this->acquisition_source) {
+            'link' => 'Havola: '.($this->acquisition_detail ?? '—'),
+            'invite' => 'Taklif: '.($this->acquisition_detail ?? '—'),
+            'utm' => 'UTM: '.($this->acquisition_detail ?? '—'),
+            'referrer' => 'Sayt: '.($this->acquisition_detail ?? '—'),
+            'direct' => 'To‘g‘ridan-to‘g‘ri',
+            default => '—',
+        };
     }
 
     public function isVerified(): bool

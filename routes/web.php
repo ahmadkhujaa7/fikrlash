@@ -12,6 +12,7 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MonetizationController;
 use App\Http\Controllers\NotificationController;
@@ -31,6 +32,10 @@ Route::get('/.well-known/assetlinks.json', [AppLinksController::class, 'android'
 Route::get('/.well-known/apple-app-site-association', [AppLinksController::class, 'apple'])->name('app-links.apple');
 Route::get('/apple-app-site-association', [AppLinksController::class, 'apple']);
 Route::get('/feed', [FeedController::class, 'page'])->name('feed.page');
+
+// ---- Marketing: kampaniya havolasi (fikrlash.uz/r/tg1) va do‘st taklifi (fikrlash.uz/i/username) ----
+Route::get('/r/{code}', [MarketingController::class, 'go'])->where('code', '[A-Za-z0-9_-]{1,40}')->middleware('throttle:120,1')->name('marketing.go');
+Route::get('/i/{username}', [MarketingController::class, 'invite'])->where('username', '[A-Za-z0-9_]{1,40}')->middleware('throttle:60,1')->name('invite');
 
 // ---- Autentifikatsiya ----
 Route::middleware('guest')->group(function () {
@@ -121,6 +126,11 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    // Do‘stlarni taklif qilish; kampaniya havolasi QR kodi (faqat admin).
+    Route::get('/invite', [MarketingController::class, 'invites'])->name('invite.index');
+    Route::get('/marketing/qr/{link}.{format}', [MarketingController::class, 'qr'])->whereNumber('link')->whereIn('format', ['png', 'svg'])
+        ->withTrashed()->name('marketing.qr');
+
     // Monetizatsiya: talablar va so‘rov, muallif paneli, pul yechish.
     Route::prefix('monetization')->name('monetization.')->controller(MonetizationController::class)->group(function () {
         Route::get('/', 'index')->name('index');

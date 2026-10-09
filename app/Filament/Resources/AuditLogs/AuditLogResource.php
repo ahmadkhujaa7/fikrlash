@@ -66,6 +66,8 @@ class AuditLogResource extends Resource
         'settings.updated' => 'Sozlamalar o‘zgartirildi',
         'notification.broadcast' => 'Ommaviy xabar',
         'token.revoked' => 'Token bekor qilindi',
+        'marketing.link_created' => 'Reklama havolasi yaratildi',
+        'marketing.settings' => 'Marketing sozlamalari o‘zgartirildi',
     ];
 
     public static function actionLabel(?string $action): string
@@ -144,7 +146,7 @@ class AuditLogResource extends Resource
                 SelectFilter::make('user_id')->label('Admin')
                     ->options(fn () => User::query()->where('role', 'admin')->pluck('username', 'id')->map(fn ($u) => '@'.$u)->all()),
                 SelectFilter::make('target_type')->label('Obyekt turi')
-                    ->options(['post' => 'Post', 'comment' => 'Izoh', 'user' => 'Foydalanuvchi', 'report' => 'Shikoyat']),
+                    ->options(['post' => 'Post', 'comment' => 'Izoh', 'user' => 'Foydalanuvchi', 'report' => 'Shikoyat', 'marketing_link' => 'Reklama havolasi']),
                 Filter::make('period')->label('Davr')
                     ->schema([DatePicker::make('from')->label('Dan'), DatePicker::make('until')->label('Gacha')])
                     ->query(fn (Builder $query, array $data) => $query

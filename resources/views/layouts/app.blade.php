@@ -77,6 +77,9 @@
                         <x-dropdown-item icon="bookmark" :href="route('saved.index')">Saqlanganlar</x-dropdown-item>
                         <x-dropdown-item icon="document" :href="route('posts.drafts')">Qoralamalar</x-dropdown-item>
                         <x-dropdown-item icon="wallet" :href="route('monetization.index')">{{ $me->isMonetized() ? 'Muallif paneli' : 'Monetizatsiya' }}</x-dropdown-item>
+                        @if (\App\Models\Setting::read('marketing_invites_enabled', true))
+                            <x-dropdown-item icon="users" :href="route('invite.index')">Do‘stlarni taklif qilish</x-dropdown-item>
+                        @endif
                         <x-dropdown-item icon="settings" :href="route('settings.profile')">Sozlamalar</x-dropdown-item>
                         @if ($me->isAdmin())
                             <x-dropdown-item icon="shield" href="/admin">Admin panel</x-dropdown-item>

@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Filament\InitialsAvatarProvider;
 use App\Filament\Resources\Authors\AuthorResource;
+use App\Filament\Resources\MarketingLinks\MarketingLinkResource;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
@@ -20,6 +21,7 @@ use App\Models\User;
 use App\Models\UserSession;
 use App\Services\Account\VerificationService;
 use App\Services\Feed\TasteService;
+use App\Services\Marketing\MarketingService;
 use App\Services\Media\ImageService;
 use App\Services\Moderation\ModerationService;
 use App\Services\Monetization\MonetizationService;
@@ -275,6 +277,17 @@ class UserResource extends Resource
                     ->visible(fn (User $r) => $r->trashed()),
             ]),
 
+            Section::make('Qayerdan kelgan')->columnSpanFull()->columns(['default' => 1, 'md' => 3])->collapsible()->schema([
+                TextEntry::make('acquisition_source')->label('Manba')->badge()->color('gray')
+                    ->formatStateUsing(fn (User $r) => $r->acquisitionLabel())->placeholder('Aniqlanmagan')
+                    ->url(fn (User $r) => $r->acquisitionLink ? MarketingLinkResource::getUrl('view', ['record' => $r->acquisitionLink]) : null),
+                TextEntry::make('referrer.name')->label('Taklif qilgan do‘sti')->placeholder('—')
+                    ->formatStateUsing(fn (User $r) => $r->referrer ? $r->referrer->name.' (@'.$r->referrer->username.')' : null)
+                    ->url(fn (User $r) => $r->referrer ? self::getUrl('view', ['record' => $r->referrer]) : null),
+                TextEntry::make('invitees_total')->label('O‘zi taklif qilganlar')
+                    ->state(fn (User $r) => Number::format($r->invitees()->count()).' kishi'),
+            ]),
+
             Section::make('Shaxsiy ma’lumotlar')->columnSpanFull()->columns(['default' => 1, 'md' => 3])->collapsible()->schema([
                 TextEntry::make('gender')->label('Jinsi')->placeholder('Ko‘rsatilmagan'),
                 TextEntry::make('birth_date')->label('Tug‘ilgan sana')->placeholder('Ko‘rsatilmagan')
@@ -315,6 +328,9 @@ class UserResource extends Resource
                     ->formatStateUsing(fn () => 'Muallif')->placeholder('—')
                     ->tooltip(fn (User $r) => $r->monetized_at ? $r->monetized_at->format('d.m.Y').' dan beri' : null)
                     ->toggleable(),
+                TextColumn::make('acquisition_source')->label('Qayerdan')->badge()->color('gray')
+                    ->formatStateUsing(fn (User $r) => $r->acquisitionLabel())->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('posts_count')->label('Postlar')->counts('posts')->numeric()->sortable(),
                 TextColumn::make('followers_count')->label('Obunachilar')->numeric()->sortable()->toggleable(),
                 TextColumn::make('last_active_at')->label('Faollik')->sortable()
@@ -360,6 +376,9 @@ class UserResource extends Resource
                         ($data['from'] ?? null) ? 'Dan: '.Carbon::parse($data['from'])->format('d.m.Y') : null,
                         ($data['until'] ?? null) ? 'Gacha: '.Carbon::parse($data['until'])->format('d.m.Y') : null,
                     ])),
+                SelectFilter::make('acquisition_source')->label('Qayerdan kelgan')->options(MarketingService::SOURCES)->multiple(),
+                SelectFilter::make('acquisition_link_id')->label('Reklama havolasi')->searchable()->preload()
+                    ->relationship('acquisitionLink', 'name'),
                 Filter::make('reported')->label('Ustidan shikoyat bor')->toggle()
                     ->query(fn (Builder $query) => $query->whereHas('reportsAgainst', fn ($q) => $q->where('status', ReportStatus::Pending))),
                 Filter::make('failed_logins')->label('Ko‘p noto‘g‘ri parol (24 soat)')->toggle()

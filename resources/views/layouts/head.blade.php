@@ -62,3 +62,4 @@
     });
 })();
 </script>
+@include('partials.tracking')

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\TrackingIds;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Vite;
@@ -50,9 +51,11 @@ class SecurityHeaders
         $devWs = $dev ? str_replace(['http://', 'https://'], ['ws://', 'wss://'], $dev) : '';
 
         $isAdmin = $request->is('admin', 'admin/*', 'livewire/*', 'livewire-*/*');
+        // Marketing analitikasi (Meta Pixel, GA4, Yandex Metrika) — faqat sayt sahifalarida va ID kiritilgan bo‘lsa.
+        $tracking = $isAdmin ? ['script' => '', 'img' => '', 'connect' => ''] : rescue(fn () => TrackingIds::csp(), ['script' => '', 'img' => '', 'connect' => ''], false);
         $script = $isAdmin
             ? "'self' 'unsafe-inline' 'unsafe-eval' {$dev}"
-            : "'self' 'nonce-{$nonce}' 'unsafe-eval' {$dev}";
+            : "'self' 'nonce-{$nonce}' 'unsafe-eval' {$tracking['script']} {$dev}";
 
         return implode('; ', array_filter([
             "default-src 'self'",
@@ -60,10 +63,10 @@ class SecurityHeaders
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net {$dev}",
             "font-src 'self' data: https://fonts.bunny.net",
             // tile.openstreetmap.org — chatdagi joylashuv xaritasi.
-            "img-src 'self' data: blob: https://tile.openstreetmap.org {$media}",
+            "img-src 'self' data: blob: https://tile.openstreetmap.org {$media} {$tracking['img']}",
             // Ovozli xabar: yozib olingandan keyin yuborilguncha blob: dan eshitiladi.
             "media-src 'self' blob: {$media}",
-            "connect-src 'self' {$dev} {$devWs}",
+            "connect-src 'self' {$tracking['connect']} {$dev} {$devWs}",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

@@ -2,6 +2,7 @@
 
 use App\Exceptions\OtpException;
 use App\Http\Middleware\BlockWhileImpersonating;
+use App\Http\Middleware\CaptureAcquisition;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\ApiResponse;
@@ -30,7 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
 
         $middleware->append(SecurityHeaders::class);
-        $middleware->web(append: [EnsureUserIsActive::class]);
+        $middleware->web(append: [EnsureUserIsActive::class, CaptureAcquisition::class]);
         $middleware->api(append: [EnsureUserIsActive::class]);
 
         // Nginx/load balancer orqasida haqiqiy IP (rate limit, audit) uchun.
